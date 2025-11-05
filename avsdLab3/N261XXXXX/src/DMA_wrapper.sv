@@ -2,8 +2,8 @@
  * File        : DMA_wrapper.sv
  * Brief       : AXI-based DMA wrapper (Master M2 + Slave S3 sideband control)
  * Description :
- *   - Slave S3 提供簡易 CSR 介面（以 AWADDR=DMA_BASE_ADDR 寫入 DMAEN）
- *   - Master M2 先讀 Descriptor，再做 SRC->DST 的搬運
+ *   - Slave S3 提供簡易 CSR 介面（以 AWADDR=DMA_EN_ADDR 寫入 DMAEN）
+ *   - Master M2 先讀 5 筆 Descriptor（含 EOC），再做 SRC->DST 的搬運
  * Reset       : ARESETn (active-low). Internally converted to rst = ~ARESETn.
  * Notes       : 依 `AXI_*` 巨集定義寬度；注意 `AXI_ID_BITS` vs `AXI_IDS_BITS`
  *----------------------------------------------------------------------------*/
@@ -95,7 +95,8 @@ module DMA_wrapper (
     // =========================
     // Parameters
     // =========================
-    localparam logic [`AXI_ADDR_BITS-1:0] DMA_BASE_ADDR = 32'h1002_0100;
+    localparam logic [`AXI_ADDR_BITS-1:0] DMA_EN_ADDR   = 32'h1002_0100; // CSR: write DMAEN here
+    localparam logic [`AXI_ADDR_BITS-1:0] DMA_BASE_ADDR = 32'h1002_0200; // descriptor base
     localparam logic [`AXI_IDS_BITS-1:0]  DESC_ID       = '0;
     localparam logic [`AXI_IDS_BITS-1:0]  SRC_ID        = '0;
 
@@ -132,7 +133,7 @@ module DMA_wrapper (
     logic                      DMA_interrupt;
 
     // ============================================================
-    // Slave FSM
+    // Slave S3 FSM
     // ============================================================
     trans_state_t                       CurrentState_S3, NextState_S3;
     logic [`AXI_IDS_BITS-1:0]           SlaveAWID_reg;
@@ -151,31 +152,28 @@ module DMA_wrapper (
     always_comb begin
         unique case (CurrentState_S3)
             ACCEPT: begin
-                if (AWVALID_S3 && (AWADDR_S3 == DMA_BASE_ADDR))  NextState_S3 = WriteData;
-                else if (ARVALID_S3)                             NextState_S3 = ReadData;
-                else                                             NextState_S3 = ACCEPT;
+                if (AWREADY_S3 && AWVALID_S3 && (AWADDR_S3 == DMA_EN_ADDR)) NextState_S3 = WriteData;
+                else if (ARVALID_S3)                          NextState_S3 = ReadData;
+                else                                          NextState_S3 = ACCEPT;
             end
             ReadData: begin
-                if (RVALID_S3 && RREADY_S3 && RLAST_S3)          NextState_S3 = ACCEPT;
-                else                                             NextState_S3 = ReadData;
+                // 立即回一拍 dummy read（RVALID/RLAST=1），即可返回 ACCEPT
+                if (RVALID_S3 && RREADY_S3 && RLAST_S3)       NextState_S3 = ACCEPT;
+                else                                          NextState_S3 = ReadData;
             end
             WriteData: begin
-                if (WVALID_S3 && WREADY_S3 && WLAST_S3)          NextState_S3 = WriteResponse;
-                else                                             NextState_S3 = WriteData;
+                if (WVALID_S3 && WREADY_S3 && WLAST_S3)       NextState_S3 = WriteResponse;
+                else                                          NextState_S3 = WriteData;
             end
             WriteResponse: begin
-                if (BVALID_S3 && BREADY_S3)                      NextState_S3 = ACCEPT;
-                else                                             NextState_S3 = WriteResponse;
+                if (BVALID_S3 && BREADY_S3)                   NextState_S3 = ACCEPT;
+                else                                          NextState_S3 = WriteResponse;
             end
-            default:                                             NextState_S3 = ACCEPT;
+            default:                                          NextState_S3 = ACCEPT;
         endcase
     end
 
-    // AW/AR ready
-    assign AWREADY_S3 = (CurrentState_S3 == ACCEPT) && ~DMAEN_output;
-    assign ARREADY_S3 = (CurrentState_S3 == ACCEPT) && ~DMAEN_output;
-
-    // Latch AW* (只在需寫入 DMAEN 的情境)
+    // Latch AW*（只在需寫 DMAEN 的情境）
     always_ff @(posedge ACLK or negedge ARESETn) begin
         if (!ARESETn) begin
             SlaveAWID_reg    <= '0;
@@ -183,7 +181,7 @@ module DMA_wrapper (
             SlaveRWLen_reg   <= '0;
             SlaveRWSize_reg  <= '0;
             SlaveRWBurst_reg <= 2'd0;
-        end else if ((CurrentState_S3 == ACCEPT) && AWVALID_S3 && (AWADDR_S3 == DMA_BASE_ADDR)) begin
+        end else if ((CurrentState_S3 == ACCEPT) && AWVALID_S3 && (AWADDR_S3 == DMA_EN_ADDR)) begin
             SlaveAWID_reg    <= AWID_S3;
             SlaveRWAddr_reg  <= AWADDR_S3;
             SlaveRWLen_reg   <= AWLEN_S3;
@@ -192,35 +190,57 @@ module DMA_wrapper (
         end
     end
 
-    // Write Data Channel (寫 DMAEN)
+    // Write Data Channel（寫 DMAEN）
     always_comb begin
-        WREADY_S3 = (CurrentState_S3 == WriteData);
         if (CurrentState_S3 == WriteData) begin
             wireDMAEN = (WVALID_S3 && (WSTRB_S3 == {`AXI_STRB_BITS{1'b1}})) ? WDATA_S3[0] : 1'b0;
         end else begin
+            // 完成一次鏈末搬運（wireDone）後自清；否則維持 DMAEN_output
             wireDMAEN = (wireDone) ? 1'b0 : DMAEN_output;
         end
     end
 
-    // Write Response Channel
+    // ---------- S3 channel outputs ----------
     always_comb begin
-        if (CurrentState_S3 == WriteResponse) begin
-            BID_S3    = SlaveAWID_reg;
-            BRESP_S3  = `AXI_RESP_OKAY;
-            BVALID_S3 = 1'b1;
-        end else begin
-            BID_S3    = '0;
-            BRESP_S3  = `AXI_RESP_DECERR;
-            BVALID_S3 = 1'b0;
-        end
-    end
+        // defaults
+        AWREADY_S3 = 1'b0;
+        ARREADY_S3 = 1'b0;
+        // W
+        WREADY_S3  = 1'b0;
+        // B
+        BID_S3     = '0;
+        BRESP_S3   = `AXI_RESP_DECERR;
+        BVALID_S3  = 1'b0;
+        // R
+        RID_S3     = '0;
+        RDATA_S3   = '0;
+        RRESP_S3   = `AXI_RESP_DECERR;
+        RLAST_S3   = 1'b0;
+        RVALID_S3  = 1'b0;
 
-    // 簡化處理：此 wrapper 不回傳真正的 Read Data，固定一次拍回應
-    assign RID_S3    = ARID_S3;
-    assign RDATA_S3  = '0;
-    assign RRESP_S3  = `AXI_RESP_DECERR;
-    assign RLAST_S3  = 1'b1;
-    assign RVALID_S3 = (CurrentState_S3 == ReadData);
+        unique case (CurrentState_S3)
+            ACCEPT: begin
+                AWREADY_S3 = ~DMAEN_output;
+                ARREADY_S3 = ~DMAEN_output;
+            end
+            ReadData: begin
+                // 回 1 拍讀資料完成握手（dummy）
+                RID_S3     = ARID_S3;
+                RDATA_S3   = '0;
+                RRESP_S3   = `AXI_RESP_DECERR;
+                RLAST_S3   = 1'b1;
+                RVALID_S3  = 1'b1;
+            end
+            WriteData: begin
+                WREADY_S3  = 1'b1;
+            end
+            WriteResponse: begin
+                BID_S3     = SlaveAWID_reg;
+                BRESP_S3   = `AXI_RESP_OKAY;
+                BVALID_S3  = 1'b1;
+            end
+        endcase
+    end
 
     // ============================================================
     // Master M2 FSM
@@ -259,37 +279,7 @@ module DMA_wrapper (
         endcase
     end
 
-    // --------- Master Read Address ---------
-    always_comb begin
-        // defaults
-        ARID_M2    = '0;
-        ARADDR_M2  = '0;
-        ARLEN_M2   = `AXI_LEN_ONE;
-        ARSIZE_M2  = `AXI_SIZE_WORD;
-        ARBURST_M2 = `AXI_BURST_INC;
-        ARVALID_M2 = 1'b0;
-
-        if (CurrentState_M2 == DMemAddressPhase && wireDMAEN) begin
-            ARID_M2    = DESC_ID[`AXI_ID_BITS-1:0];
-            ARADDR_M2  = DMAEN_output ? NEXT_DESC : DMA_BASE_ADDR; // 讀描述子（5筆字）
-            ARLEN_M2   = `AXI_LEN_BITS'(4-1);                      // 5 beats => LEN=4
-            ARSIZE_M2  = `AXI_SIZE_WORD;
-            ARBURST_M2 = `AXI_BURST_INC;
-            ARVALID_M2 = 1'b1;
-        end else if (CurrentState_M2 == IMemDramAdressPhase) begin
-            ARID_M2    = SRC_ID[`AXI_ID_BITS-1:0];
-            ARADDR_M2  = SRC_ADDR;
-            ARLEN_M2   = DMALEN[`AXI_LEN_BITS-1:0];                // 假設 DMALEN 已是 beat-1
-            ARSIZE_M2  = `AXI_SIZE_WORD;
-            ARBURST_M2 = `AXI_BURST_INC;
-            ARVALID_M2 = 1'b1;
-        end
-    end
-
-    // --------- Master Read Data ---------
-    assign RREADY_M2 = (CurrentState_M2 == DMemReadData) ||
-                       (CurrentState_M2 == DramReadIMemWriteData);
-
+    // Descriptor read data feed into DMA regs
     always_comb begin
         wireDESC_input = '0;
         if (CurrentState_M2 == DMemReadData && RVALID_M2) begin
@@ -297,49 +287,90 @@ module DMA_wrapper (
         end
     end
 
-    // --------- Master Write Address ---------
+    // ---------- Master outputs ----------
     always_comb begin
         // defaults
+        // Read Address
+        ARID_M2    = '0;
+        ARADDR_M2  = '0;
+        ARLEN_M2   = `AXI_LEN_ONE;
+        ARSIZE_M2  = `AXI_SIZE_WORD;
+        ARBURST_M2 = `AXI_BURST_INC;
+        ARVALID_M2 = 1'b0;
+        // Read Data
+        RREADY_M2  = 1'b0;
+        // Write Address
         AWID_M2    = '0;
         AWADDR_M2  = '0;
         AWLEN_M2   = `AXI_LEN_ONE;
         AWSIZE_M2  = `AXI_SIZE_WORD;
         AWBURST_M2 = `AXI_BURST_INC;
         AWVALID_M2 = 1'b0;
+        // Write Data
+        WDATA_M2   = '0;
+        WSTRB_M2   = '0;
+        WLAST_M2   = 1'b0;
+        WVALID_M2  = 1'b0;
 
-        if (CurrentState_M2 == IMemDramAdressPhase) begin
-            AWID_M2    = SRC_ID[`AXI_ID_BITS-1:0];
-            AWADDR_M2  = DST_ADDR;
-            AWLEN_M2   = DMALEN[`AXI_LEN_BITS-1:0];  // 假設 DMALEN 已是 beat-1
-            AWSIZE_M2  = `AXI_SIZE_WORD;
-            AWBURST_M2 = `AXI_BURST_INC;
-            AWVALID_M2 = 1'b1;
+
+        unique case (CurrentState_M2)
+            DMemAddressPhase: begin
+                if (wireDMAEN) begin
+                    ARID_M2    = DESC_ID[`AXI_ID_BITS-1:0];
+                    ARADDR_M2  = DMAEN_output ? NEXT_DESC : DMA_BASE_ADDR; // 讀 5 筆（含 EOC）
+                    ARLEN_M2   = `AXI_LEN_BITS'(5-1);                      // 5 beats => LEN=4
+                    ARSIZE_M2  = `AXI_SIZE_WORD;
+                    ARBURST_M2 = `AXI_BURST_INC;
+                    ARVALID_M2 = 1'b1;
+                end
+            end
+            DMemReadData: begin
+                RREADY_M2 = 1'b1;
+            end
+            IMemDramAdressPhase: begin
+                // Read Address（從 SRC 搬出）
+                ARID_M2    = SRC_ID[`AXI_ID_BITS-1:0];
+                ARADDR_M2  = SRC_ADDR;
+                ARLEN_M2   = DMALEN[`AXI_LEN_BITS-1:0]; // 假設 DMALEN 已是 beat-1
+                ARSIZE_M2  = `AXI_SIZE_WORD;
+                ARBURST_M2 = `AXI_BURST_INC;
+                ARVALID_M2 = 1'b1;
+                // Write Address（寫入 DST）
+                AWID_M2    = SRC_ID[`AXI_ID_BITS-1:0];
+                AWADDR_M2  = DST_ADDR;
+                AWLEN_M2   = DMALEN[`AXI_LEN_BITS-1:0];
+                AWSIZE_M2  = `AXI_SIZE_WORD;
+                AWBURST_M2 = `AXI_BURST_INC;
+                AWVALID_M2 = 1'b1;
+            end
+            DramReadIMemWriteData: begin
+                RREADY_M2  = 1'b1;
+                WDATA_M2   = RDATA_M2;
+                WSTRB_M2   = {`AXI_STRB_BITS{1'b1}};
+                WLAST_M2   = (rwCount == rwLEN);
+                WVALID_M2  = RVALID_M2 && RREADY_M2;
+            end
+        endcase
+    end
+    // Write Response
+    always_ff @(posedge ACLK or negedge ARESETn) begin
+        if (!ARESETn) begin
+            // Write Response
+            BREADY_M2  = 1'b0; 
+        end else begin
+            if (NextState_M2 == DMemAddressPhase) begin
+                BREADY_M2  = 1'b1;
+            end
+            else begin
+                BREADY_M2  = 1'b0;
+            end
         end
     end
-
-    // --------- Master Write Data ---------
-    always_comb begin
-        // defaults
-        WDATA_M2  = '0;
-        WSTRB_M2  = '0;
-        WLAST_M2  = 1'b0;
-        WVALID_M2 = 1'b0;
-
-        if (CurrentState_M2 == DramReadIMemWriteData) begin
-            WDATA_M2  = RDATA_M2;
-            WSTRB_M2  = {`AXI_STRB_BITS{1'b1}};
-            WLAST_M2  = (rwCount == rwLEN);
-            WVALID_M2 = RVALID_M2 && RREADY_M2;
-        end
-    end
-
-    // --------- Write Response ---------
-    assign BREADY_M2 = (CurrentState_M2 == DramReadIMemWriteData);
 
     // --------- RW counters ---------
     always_comb begin
         unique case (CurrentState_M2)
-            DMemReadData:             rwLEN = `AXI_LEN_BITS'(5-1); // 讀5筆描述子 => LEN=5
+            DMemReadData:             rwLEN = `AXI_LEN_BITS'(5-1); // 讀 5 筆描述子（含 EOC）
             DramReadIMemWriteData:    rwLEN = DMALEN[`AXI_LEN_BITS-1:0];
             default:                  rwLEN = '0;
         endcase
@@ -366,7 +397,7 @@ module DMA_wrapper (
     assign wireDESC_write_en  = (CurrentState_M2 == DMemReadData) && RVALID_M2 && RREADY_M2;
     assign wireDESC_sel       = rwCount[3:0]; // 0:DMASRC,1:DMADST,2:DMALEN,3:NEXT_DESC,4:EOC
     assign wireDone           = (CurrentState_M2 == DramReadIMemWriteData) && EOC &&
-                                RVALID_M2 && RREADY_M2 && RLAST_M2;
+                                RVALID_M2 && RREADY_M2 && RLAST_M2 && WVALID_M2 && WREADY_M2;
 
     DMA dma (
         .clk            (ACLK              ),
