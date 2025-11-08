@@ -14,7 +14,7 @@ module DMA_wrapper (
     // =========================
     input  logic                        ACLK,
     input  logic                        ARESETn,
-
+    output logic                        Interrupt,
     // =========================
     // AXI Master M2 (to system bus)
     // =========================
@@ -96,7 +96,7 @@ module DMA_wrapper (
     // Parameters
     // =========================
     localparam logic [`AXI_ADDR_BITS-1:0] DMA_EN_ADDR   = 32'h1002_0100; // CSR: write DMAEN here
-    localparam logic [`AXI_ADDR_BITS-1:0] DMA_BASE_ADDR = 32'h1002_0200; // descriptor base
+    localparam logic [`AXI_ADDR_BITS-1:0] DESC_BASE_ADDR = 32'h1002_0200; // descriptor base
     localparam logic [`AXI_IDS_BITS-1:0]  DESC_ID       = '0;
     localparam logic [`AXI_IDS_BITS-1:0]  SRC_ID        = '0;
 
@@ -109,10 +109,10 @@ module DMA_wrapper (
 
     typedef enum logic [2:0] {
         IDLE                  = 3'd0,
-        DMemAddressPhase      = 3'd1,
-        DMemReadData          = 3'd2,
-        IMemDramAdressPhase   = 3'd3,
-        DramReadIMemWriteData = 3'd4
+        DESCAddressPhase      = 3'd1,
+        ReadDESCData          = 3'd2,
+        TransferAdressPhase   = 3'd3,
+        TransferData          = 3'd4
     } m2_state_t;
 
     // ============================================================
@@ -142,6 +142,7 @@ module DMA_wrapper (
     logic [`AXI_SIZE_BITS-1:0]          SlaveRWSize_reg;
     logic [1:0]                         SlaveRWBurst_reg;
 
+
     // State reg
     always_ff @(posedge ACLK or negedge ARESETn) begin
         if (!ARESETn) CurrentState_S3 <= ACCEPT;
@@ -152,24 +153,25 @@ module DMA_wrapper (
     always_comb begin
         unique case (CurrentState_S3)
             ACCEPT: begin
-                if (AWREADY_S3 && AWVALID_S3 && (AWADDR_S3 == DMA_EN_ADDR)) NextState_S3 = WriteData;
-                else if (ARVALID_S3)                          NextState_S3 = ReadData;
-                else                                          NextState_S3 = ACCEPT;
+                if (AWREADY_S3 && AWVALID_S3 && ((AWADDR_S3 == DMA_EN_ADDR) || (AWADDR_S3 == DESC_BASE_ADDR))) 
+                                                                NextState_S3 = WriteData;
+                else if (ARVALID_S3)                            NextState_S3 = ReadData;
+                else                                            NextState_S3 = ACCEPT;
             end
             ReadData: begin
                 // 立即回一拍 dummy read（RVALID/RLAST=1），即可返回 ACCEPT
-                if (RVALID_S3 && RREADY_S3 && RLAST_S3)       NextState_S3 = ACCEPT;
-                else                                          NextState_S3 = ReadData;
+                if (RVALID_S3 && RREADY_S3 && RLAST_S3)         NextState_S3 = ACCEPT;
+                else                                            NextState_S3 = ReadData;
             end
             WriteData: begin
-                if (WVALID_S3 && WREADY_S3 && WLAST_S3)       NextState_S3 = WriteResponse;
-                else                                          NextState_S3 = WriteData;
+                if (WVALID_S3 && WREADY_S3 && WLAST_S3)         NextState_S3 = WriteResponse;
+                else                                            NextState_S3 = WriteData;
             end
             WriteResponse: begin
-                if (BVALID_S3 && BREADY_S3)                   NextState_S3 = ACCEPT;
-                else                                          NextState_S3 = WriteResponse;
+                if (BVALID_S3 && BREADY_S3)                     NextState_S3 = ACCEPT;
+                else                                            NextState_S3 = WriteResponse;
             end
-            default:                                          NextState_S3 = ACCEPT;
+            default:                                            NextState_S3 = ACCEPT;
         endcase
     end
 
@@ -181,7 +183,7 @@ module DMA_wrapper (
             SlaveRWLen_reg   <= '0;
             SlaveRWSize_reg  <= '0;
             SlaveRWBurst_reg <= 2'd0;
-        end else if ((CurrentState_S3 == ACCEPT) && AWVALID_S3 && (AWADDR_S3 == DMA_EN_ADDR)) begin
+        end else if ((CurrentState_S3 == ACCEPT) && AWVALID_S3 && ((AWADDR_S3 == DMA_EN_ADDR) || (AWADDR_S3 == DESC_BASE_ADDR))) begin
             SlaveAWID_reg    <= AWID_S3;
             SlaveRWAddr_reg  <= AWADDR_S3;
             SlaveRWLen_reg   <= AWLEN_S3;
@@ -192,11 +194,16 @@ module DMA_wrapper (
 
     // Write Data Channel（寫 DMAEN）
     always_comb begin
-        if (CurrentState_S3 == WriteData) begin
-            wireDMAEN = (WVALID_S3 && (WSTRB_S3 == {`AXI_STRB_BITS{1'b1}})) ? WDATA_S3[0] : 1'b0;
+        if (CurrentState_S3 == WriteData && SlaveRWAddr_reg == DMA_EN_ADDR) begin
+            wireDMAEN          = (WVALID_S3 && (WSTRB_S3 == {`AXI_STRB_BITS{1'b1}})) ? WDATA_S3[0] : 1'b0;
+            wireDESC_BASE      = DESC_BASE_output; // 保持不變
+        end else if (CurrentState_S3 == WriteData && SlaveRWAddr_reg == DESC_BASE_ADDR) begin
+            wireDMAEN          = DMAEN_output;
+            wireDESC_BASE      = (WVALID_S3 && (WSTRB_S3 == {`AXI_STRB_BITS{1'b1}})) ? WDATA_S3 : `AXI_ADDR_BITS'b0;
         end else begin
             // 完成一次鏈末搬運（wireDone）後自清；否則維持 DMAEN_output
-            wireDMAEN = (wireDone) ? 1'b0 : DMAEN_output;
+            wireDMAEN          = (wireDone) ? 1'b0              : DMAEN_output;
+            wireDESC_BASE      = (wireDone) ? `AXI_ADDR_BITS'b0 : DESC_BASE_output;
         end
     end
 
@@ -245,44 +252,60 @@ module DMA_wrapper (
     // ============================================================
     // Master M2 FSM
     // ============================================================
-    m2_state_t                           CurrentState_M2, NextState_M2;
-    logic   [`AXI_LEN_BITS-1:0]          rwLEN, rwCount;
+    m2_state_t                          CurrentState_M2, NextState_M2;
+    logic [`AXI_LEN_BITS-1:0]           rwLEN,           rwCount, n_iter;
+    // Master M2 FSM signals
+    // ============================================================
+    logic                               DESC_Base_Ready;
+    // iterate if burst len too big
+    // ============================================================
+    logic                               isMAXBurstLen;
+    logic [`AXI_DATA_BITS-1:0]          aBatchDataNumb, BurstLen, AddrShift;
 
     // State reg
     always_ff @(posedge ACLK or negedge ARESETn) begin
         if (!ARESETn) CurrentState_M2 <= IDLE;
         else          CurrentState_M2 <= NextState_M2;
     end
-
+    
     // Next state
     always_comb begin
+        DESC_Base_Ready = (CurrentState_S3 == WriteData) && (SlaveRWAddr_reg == DESC_BASE_ADDR) && WVALID_S3;
         unique case (CurrentState_M2)
-            IDLE:                         NextState_M2 = DMemAddressPhase;
-            DMemAddressPhase: begin
-                if (ARREADY_M2 && wireDMAEN)                NextState_M2 = DMemReadData;
-                else                                        NextState_M2 = DMemAddressPhase;
+            IDLE:                                           NextState_M2 = DESCAddressPhase;
+            DESCAddressPhase: begin
+                // Read descriptor if DMAEN is set 1, and CPU has written descriptor base
+                if (ARREADY_M2 && DMAEN_output && DESC_Base_Ready)         
+                                                            NextState_M2 = ReadDESCData;
+                else                                        NextState_M2 = DESCAddressPhase;
             end
-            DMemReadData: begin
-                if (RVALID_M2 && RREADY_M2 && RLAST_M2)     NextState_M2 = IMemDramAdressPhase;
+            ReadDESCData: begin
+                if (RVALID_M2 && RREADY_M2 && RLAST_M2)     NextState_M2 = TransferAdressPhase;
                 else                                        NextState_M2 = DMemReadData;
             end
-            IMemDramAdressPhase: begin
-                if (AWREADY_M2 && ARREADY_M2)               NextState_M2 = DramReadIMemWriteData;
-                else                                        NextState_M2 = IMemDramAdressPhase;
+            TransferAdressPhase: begin
+                if (AWREADY_M2 && ARREADY_M2)               NextState_M2 = TransferData;
+                else                                        NextState_M2 = TransferAdressPhase;
             end
-            DramReadIMemWriteData: begin
-                if (RVALID_M2 && RREADY_M2 && WVALID_M2 && WREADY_M2 && RLAST_M2)
-                                                        NextState_M2 = DMemAddressPhase;
-                else                                    NextState_M2 = DramReadIMemWriteData;
+            TransferData: begin
+                if (isMAXBurstLen) begin
+                    if (RVALID_M2 && RREADY_M2 && WVALID_M2 && WREADY_M2 && RLAST_M2)
+                                                                NextState_M2 = DESCAddressPhase;
+                    else                                        NextState_M2 = TransferData;
+                end else begin
+                    if (RVALID_M2 && RREADY_M2 && WVALID_M2 && WREADY_M2 && RLAST_M2)
+                                                                NextState_M2 = TransferAdressPhase;
+                    else                                        NextState_M2 = TransferData;
+                end
             end
-            default:                                      NextState_M2 = IDLE;
+            default:                                        NextState_M2 = IDLE;
         endcase
     end
 
     // Descriptor read data feed into DMA regs
     always_comb begin
         wireDESC_input = '0;
-        if (CurrentState_M2 == DMemReadData && RVALID_M2) begin
+        if (CurrentState_M2 == ReadDESCData && RVALID_M2) begin
             wireDESC_input = RDATA_M2;
         end
     end
@@ -314,36 +337,36 @@ module DMA_wrapper (
 
 
         unique case (CurrentState_M2)
-            DMemAddressPhase: begin
+            DESCAddressPhase: begin
                 if (wireDMAEN) begin
                     ARID_M2    = DESC_ID[`AXI_ID_BITS-1:0];
-                    ARADDR_M2  = DMAEN_output ? NEXT_DESC : DMA_BASE_ADDR; // 讀 5 筆（含 EOC）
-                    ARLEN_M2   = `AXI_LEN_BITS'(5-1);                      // 5 beats => LEN=4
+                    ARADDR_M2  = DMAEN_output ? NEXT_DESC : DESC_BASE_output; // 讀 5 筆（含 EOC）
+                    ARLEN_M2   = `AXI_LEN_BITS'(5-1);                         // 5 beats => LEN=4
                     ARSIZE_M2  = `AXI_SIZE_WORD;
                     ARBURST_M2 = `AXI_BURST_INC;
                     ARVALID_M2 = 1'b1;
                 end
             end
-            DMemReadData: begin
+            ReadDESCData: begin
                 RREADY_M2 = 1'b1;
             end
-            IMemDramAdressPhase: begin
+            TransferAdressPhase: begin
                 // Read Address（從 SRC 搬出）
                 ARID_M2    = SRC_ID[`AXI_ID_BITS-1:0];
-                ARADDR_M2  = SRC_ADDR;
-                ARLEN_M2   = DMALEN[`AXI_LEN_BITS-1:0]; // 假設 DMALEN 已是 beat-1
+                ARADDR_M2  = SRC_ADDR + AddrShift;
+                ARLEN_M2   = BurstLen[`AXI_LEN_BITS-1:0]; // 假設 DMALEN 已是 beat-1
                 ARSIZE_M2  = `AXI_SIZE_WORD;
                 ARBURST_M2 = `AXI_BURST_INC;
                 ARVALID_M2 = 1'b1;
                 // Write Address（寫入 DST）
                 AWID_M2    = SRC_ID[`AXI_ID_BITS-1:0];
-                AWADDR_M2  = DST_ADDR;
-                AWLEN_M2   = DMALEN[`AXI_LEN_BITS-1:0];
+                AWADDR_M2  = DST_ADDR + AddrShift;
+                AWLEN_M2   = BurstLen[`AXI_LEN_BITS-1:0];
                 AWSIZE_M2  = `AXI_SIZE_WORD;
                 AWBURST_M2 = `AXI_BURST_INC;
                 AWVALID_M2 = 1'b1;
             end
-            DramReadIMemWriteData: begin
+            TransferData: begin
                 RREADY_M2  = 1'b1;
                 WDATA_M2   = RDATA_M2;
                 WSTRB_M2   = {`AXI_STRB_BITS{1'b1}};
@@ -358,7 +381,7 @@ module DMA_wrapper (
             // Write Response
             BREADY_M2  = 1'b0; 
         end else begin
-            if (NextState_M2 == DMemAddressPhase) begin
+            if (NextState_M2 == DESCAddressPhase) begin
                 BREADY_M2  = 1'b1;
             end
             else begin
@@ -366,12 +389,35 @@ module DMA_wrapper (
             end
         end
     end
-
+    // -------- iteration 
+    always_ff @(posedge ACLK or negedge ARESETn) begin
+        if (!ARESETn) begin
+            n_iter      <= '0;
+        end else begin
+            if (CurrentState_M2 == TransferData) begin
+                n_iter  <= (WVALID_M2 && RLAST_M2) ? n_iter + 1 : n_iter;
+            end else if (CurrentState_M2 == TransferAdressPhase) begin
+                n_iter  <= n_iter;
+            end else begin
+                n_iter <= '0;
+            end
+        end
+    end
+    // if DMALEN == 37
+    // iter_n = 0, | iter_n = 1, | iter_n = 2
+    // 37 - 16 * 0 | 37 - 16 * 1 | 37 - 16 * 2
+    // 37          | 21          | 5
+    always_comb begin
+        AddrShift         = {(`AXI_DATA_BITS - `AXI_LEN_BITS){1'd0}, `AXI_LEN_BITS{1'd1}} * n_iter
+        aBatchDataNumb    = DMALEN - AddrShift;
+        isMAXBurstLen     = aBatchDataNumb[`AXI_LEN_BITS-1:0] < {`AXI_LEN_BITS{1'd1}};
+        BurstLen          = isMAXBurstLen ? aBatchDataNumb : {(`AXI_DATA_BITS - `AXI_LEN_BITS){1'd0}, `AXI_LEN_BITS{1'd1}}
+    end
     // --------- RW counters ---------
     always_comb begin
         unique case (CurrentState_M2)
-            DMemReadData:             rwLEN = `AXI_LEN_BITS'(5-1); // 讀 5 筆描述子（含 EOC）
-            DramReadIMemWriteData:    rwLEN = DMALEN[`AXI_LEN_BITS-1:0];
+            ReadDESCData:             rwLEN = `AXI_LEN_BITS'(5-1); // 讀 5 筆描述子（含 EOC）
+            TransferData:             rwLEN = BurstLen;
             default:                  rwLEN = '0;
         endcase
     end
@@ -379,8 +425,8 @@ module DMA_wrapper (
     always_ff @(posedge ACLK or negedge ARESETn) begin
         if (!ARESETn) begin
             rwCount <= '0;
-        end else if ((CurrentState_M2 == DMemReadData) ||
-                     (CurrentState_M2 == DramReadIMemWriteData)) begin
+        end else if ((CurrentState_M2 == ReadDESCData) ||
+                     (CurrentState_M2 == TransferData)) begin
             if ((rwCount == rwLEN) && RVALID_M2 && RREADY_M2 && RLAST_M2)
                 rwCount <= '0;
             else if (RREADY_M2 && RVALID_M2)
@@ -393,10 +439,10 @@ module DMA_wrapper (
     // ============================================================
     // DMA instance & glue
     // ============================================================
-    assign wireDESC_BASE      = DMA_BASE_ADDR;
-    assign wireDESC_write_en  = (CurrentState_M2 == DMemReadData) && RVALID_M2 && RREADY_M2;
+
+    assign wireDESC_write_en  = (CurrentState_M2 == ReadDESCData) && RVALID_M2 && RREADY_M2;
     assign wireDESC_sel       = rwCount[3:0]; // 0:DMASRC,1:DMADST,2:DMALEN,3:NEXT_DESC,4:EOC
-    assign wireDone           = (CurrentState_M2 == DramReadIMemWriteData) && EOC &&
+    assign wireDone           = (CurrentState_M2 == TransferData) && EOC &&
                                 RVALID_M2 && RREADY_M2 && RLAST_M2 && WVALID_M2 && WREADY_M2;
 
     DMA dma (
@@ -409,6 +455,7 @@ module DMA_wrapper (
         .DESC_sel       (wireDESC_sel      ),
         .Done           (wireDone          ),
         .DMAEN_output   (DMAEN_output      ),
+        .DESC_BASE_output(DESC_BASE_output ), // NOTE: currently unused
         .DMASRC         (DMASRC            ),
         .DMADST         (DMADST            ),
         .DMALEN         (DMALEN            ),
@@ -416,7 +463,7 @@ module DMA_wrapper (
         .EOC            (EOC               ),
         .SRC_ADDR       (SRC_ADDR          ),
         .DST_ADDR       (DST_ADDR          ),
-        .DMA_interrupt  (DMA_interrupt     )
+        .DMA_interrupt  (Interrupt         )
     );
 
 endmodule

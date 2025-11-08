@@ -36,6 +36,7 @@ module DMA (
     // Outputs (mirrors)
     // =========================
     output logic                      DMAEN_output,
+    output logic [`AXI_ADDR_BITS-1:0] DESC_BASE_output, // NOTE: currently unused
     output logic [`AXI_ADDR_BITS-1:0] DMASRC,
     output logic [`AXI_ADDR_BITS-1:0] DMADST,
     output logic [`AXI_DATA_BITS-1:0] DMALEN,
@@ -56,6 +57,7 @@ module DMA (
     always_ff @(posedge clk or posedge rst) begin
         if (rst) begin
             DMAEN_output <= 1'b0;
+            DESC_BASE_output <= '0; // currently unused
             DMASRC       <= '0;
             DMADST       <= '0;
             DMALEN       <= '0;
@@ -64,7 +66,7 @@ module DMA (
         end else begin
             // Pass-through enable
             DMAEN_output <= DMAEN;
-
+            DESC_BASE_output <= DESC_BASE; // currently unused
             // Latch descriptor writes
             if (DESC_write_en) begin
                 unique case (DESC_sel)
