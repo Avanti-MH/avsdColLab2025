@@ -28,8 +28,8 @@ module AXI #(
     parameter int MIDX_BITS = 2,
     parameter int SIDX_BITS = 3
 )(
-    input  logic ACLK,
-    input  logic ARESETn,
+    input  logic clk,
+    input  logic rst,
 
     // ========================================================
     // Master
@@ -178,8 +178,8 @@ module AXI #(
 	// Default Slave Instance
 	// ---------------------------------------
 	DefaultSlave uDefaultSlave(
-		.clk             (ACLK            ),
-		.rst             (ARESETn         ),
+		.clk             (clk             ),
+		.rst             (rst             ),
 
 		.ARID_DEFAULT    (ARID_DEFAULT    ),
 		.ARADDR_DEFAULT  (ARADDR_DEFAULT  ),
@@ -240,8 +240,8 @@ module AXI #(
         .MIDX_BITS          (MIDX_BITS                   ),
         .SIDX_BITS          (SIDX_BITS                   )
     ) uArbiter (
-        .clk                (ACLK                        ),
-        .rst                (ARESETn                     ),
+        .clk                (clk                         ),
+        .rst                (rst                         ),
         .R_REQ              (R_REQ                       ),
         .W_REQ              (W_REQ                       ),
 

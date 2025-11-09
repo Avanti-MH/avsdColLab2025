@@ -2,8 +2,8 @@
 
 module SRAM_wrapper(
 
-  	input  logic                            ACLK,
-    input  logic                            ARESETn,
+  	input  logic                            clk,
+    input  logic                            rst,
 
     // ReadAddress
     input  logic [`AXI_IDS_BITS-1:0]        ARID_S,
@@ -78,15 +78,15 @@ module SRAM_wrapper(
 	// ============================================================
 
 	// ---------------------------------------
-    // State register
+    // State Register
     // ---------------------------------------
-	always_ff @( posedge ACLK or negedge ARESETn ) begin // CurrentState NextState
-		if (~ARESETn) CurrentState <= ACCEPT;
-		else 	  	  CurrentState <= NextState;
+	always_ff @( posedge clk or posedge rst ) begin
+		if (rst) CurrentState <= ACCEPT;
+		else 	 CurrentState <= NextState;
 	end
 
 	// ---------------------------------------
-    // Next state logic
+    // Next State Logic
     // ---------------------------------------
 	always_comb begin
         case(CurrentState)
@@ -128,6 +128,7 @@ module SRAM_wrapper(
 		BID_S       = `AXI_IDS_BITS'd0;
 		BVALID_S    = 1'b0;
 		BRESP_S     = `AXI_RESP_DECERR;
+
 		case (CurrentState)
 			ACCEPT: begin
 				ARREADY_S = 1'b1;
@@ -154,8 +155,8 @@ module SRAM_wrapper(
 	// ============================================================
 	// Request Information Storage
 	// ============================================================
-	always_ff @( posedge ACLK or negedge ARESETn ) begin
-		if (~ARESETn) begin
+	always_ff @( posedge clk or posedge rst ) begin
+		if (rst) begin
 			ARID <= `AXI_IDS_BITS'd0;
 			AWID <= `AXI_IDS_BITS'd0;
 			ADDR <= `AXI_ADDR_BITS'd0;
@@ -171,8 +172,8 @@ module SRAM_wrapper(
 	// ============================================================
 	// Counter logic
 	// ============================================================
-	always_ff @(posedge ACLK or negedge ARESETn) begin
-		if (~ARESETn) begin
+	always_ff @(posedge clk or posedge rst) begin
+		if (rst) begin
 			LEN_cnt <= `AXI_LEN_BITS'd0;
 		end else if ((RVALID_S && RREADY_S) || (WVALID_S && WREADY_S)) begin
 			LEN_cnt <= (LEN_cnt == LEN) ? `AXI_LEN_BITS'd0 : LEN_cnt + `AXI_LEN_BITS'd1;
@@ -182,8 +183,8 @@ module SRAM_wrapper(
 	// ============================================================
 	// Buffer for ReadData
 	// ============================================================
-	always_ff @( posedge ACLK or negedge ARESETn ) begin // Pending
-		if (~ARESETn) begin
+	always_ff @( posedge clk or posedge rst ) begin // Pending
+		if (rst) begin
 			buf_VALID  <= 1'b0;
 			buf_SRAM_Q <= `AXI_DATA_BITS'b0;
 		end else if (RVALID_S && ~RREADY_S) begin
@@ -222,7 +223,7 @@ TS1N16ADFPCLLLVTA512X45M4SWSHOD i_SRAM (
     .DSLP		(1'b0		),
     .SD			(1'b0		),
     .PUDELAY	(			),
-    .CLK		(ACLK		),
+    .CLK		(clk		),
 	.CEB		(SRAM_CEBn	),
 	.WEB		(SRAM_WEBn	),
     .A			(SRAM_A		),

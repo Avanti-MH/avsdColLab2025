@@ -83,8 +83,8 @@ module Arbiter #(
     // ============================================================
     // Connect Register Update
     // ============================================================
-    always_ff @(posedge clk or negedge rst) begin
-        if (~rst) begin
+    always_ff @(posedge clk or posedge rst) begin
+        if (rst) begin
             for (int s = 0; s < NUM_S+1; s++)
                 connect_reg[s] <= NONE;
         end else begin

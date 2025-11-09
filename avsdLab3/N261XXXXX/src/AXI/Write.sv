@@ -70,7 +70,7 @@ module Write #(
         // Assignments for slaves
         for (int s = 0; s < NUM_S; s++) begin
             AWID_S[s]    = {4'd0, AWID_M[SWIdx[s]]};
-            AWADDR_S[s]  = AWADDR_M[SWIdx[s]] - S0_BEGIN[SWIdx[s]];
+            AWADDR_S[s]  = AWADDR_M[SWIdx[s]] - S_BEGIN[SWIdx[s]];
             AWLEN_S[s]   = AWLEN_M[SWIdx[s]];
             AWSIZE_S[s]  = AWSIZE_M[SWIdx[s]];
             AWBURST_S[s] = AWBURST_M[SWIdx[s]];

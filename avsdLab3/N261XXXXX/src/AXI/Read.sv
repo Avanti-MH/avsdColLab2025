@@ -57,7 +57,7 @@ module Read #(
         // Assignments for slaves
         for (int s = 0; s < NUM_S+1; s++) begin
             ARID_S[s]    = {4'd0, ARID_M[SRIdx[s]]};
-            ARADDR_S[s]  = ARADDR_M[SRIdx[s]] - S0_BEGIN[SRIdx[s]];
+            ARADDR_S[s]  = ARADDR_M[SRIdx[s]] - S_BEGIN[SRIdx[s]];
             ARLEN_S[s]   = ARLEN_M[SRIdx[s]];
             ARSIZE_S[s]  = ARSIZE_M[SRIdx[s]];
             ARBURST_S[s] = ARBURST_M[SRIdx[s]];
