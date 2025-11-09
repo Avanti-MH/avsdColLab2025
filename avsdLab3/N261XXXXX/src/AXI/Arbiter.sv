@@ -98,12 +98,12 @@ module Arbiter #(
     // ============================================================
     always_comb begin
         for (int s = 0; s < NUM_S+1; s++) begin
-            SRIdx[s] = MIDX_BITS'd0;
-            SWIdx[s] = MIDX_BITS'd0;
+            SRIdx[s] = SIDX_BITS'(0);
+            SWIdx[s] = SIDX_BITS'(0);
         end
         for (int m = 0; m < NUM_M; m++) begin
-            MRIdx[m] = SIDX_BITS'd0;
-            MWIdx[m] = SIDX_BITS'd0;
+            MRIdx[m] = MIDX_BITS'(0);
+            MWIdx[m] = MIDX_BITS'(0);
         end
 
         for (int s = 0; s < NUM_S+1; s++) begin
