@@ -1,0 +1,332 @@
+`include "../include/AXI_define.svh"
+`include "../src/CPU_wrapper.sv"
+`include "../src/SRAM_wrapper.sv"
+`include "../src/AXI/AXI.sv"
+
+module top(
+
+	input							clk,
+	input							rst
+
+);
+
+	// ============================================================
+	// Local Parameters
+	// ============================================================
+	localparam int NUM_M     = 2;
+    localparam int NUM_S     = 2;
+    localparam int MIDX_BITS = 2;
+    localparam int SIDX_BITS = 3;
+
+	// ============================================================
+	// Interrupt Signals
+	// ============================================================
+	logic          DMA_interrupt;
+	logic          WTO_interrupt;
+
+	// ============================================================
+	// Packed AXI Signals
+	// ============================================================
+	logic [NUM_M-1:0][`AXI_ID_BITS-1:0]   ARID_M;
+    logic [NUM_M-1:0][`AXI_ADDR_BITS-1:0] ARADDR_M;
+    logic [NUM_M-1:0][`AXI_LEN_BITS-1:0]  ARLEN_M;
+    logic [NUM_M-1:0][`AXI_SIZE_BITS-1:0] ARSIZE_M;
+    logic [NUM_M-1:0][1:0]                ARBURST_M;
+    logic [NUM_M-1:0]                     ARVALID_M;
+    logic [NUM_M-1:0]                     ARREADY_M;
+
+    logic [NUM_M-1:0][`AXI_ID_BITS-1:0]   RID_M;
+    logic [NUM_M-1:0][`AXI_DATA_BITS-1:0] RDATA_M;
+    logic [NUM_M-1:0][1:0]                RRESP_M;
+    logic [NUM_M-1:0]                     RLAST_M;
+    logic [NUM_M-1:0]                     RVALID_M;
+    logic [NUM_M-1:0]                     RREADY_M;
+
+    logic [NUM_S-1:0][`AXI_IDS_BITS-1:0]  ARID_S;
+    logic [NUM_S-1:0][`AXI_ADDR_BITS-1:0] ARADDR_S;
+    logic [NUM_S-1:0][`AXI_LEN_BITS-1:0]  ARLEN_S;
+    logic [NUM_S-1:0][`AXI_SIZE_BITS-1:0] ARSIZE_S;
+    logic [NUM_S-1:0][1:0]                ARBURST_S;
+    logic [NUM_S-1:0]                     ARVALID_S;
+    logic [NUM_S-1:0]                     ARREADY_S;
+
+    logic [NUM_S-1:0][`AXI_IDS_BITS-1:0]  RID_S;
+    logic [NUM_S-1:0][`AXI_DATA_BITS-1:0] RDATA_S;
+    logic [NUM_S-1:0][1:0]                RRESP_S;
+    logic [NUM_S-1:0]                     RLAST_S;
+    logic [NUM_S-1:0]                     RVALID_S;
+    logic [NUM_S-1:0]                     RREADY_S;
+
+    logic [NUM_M-1:0][`AXI_ID_BITS-1:0]   AWID_M;
+    logic [NUM_M-1:0][`AXI_ADDR_BITS-1:0] AWADDR_M;
+    logic [NUM_M-1:0][`AXI_LEN_BITS-1:0]  AWLEN_M;
+    logic [NUM_M-1:0][`AXI_SIZE_BITS-1:0] AWSIZE_M;
+    logic [NUM_M-1:0][1:0]                AWBURST_M;
+    logic [NUM_M-1:0]                     AWVALID_M;
+    logic [NUM_M-1:0]                     AWREADY_M;
+
+    logic [NUM_M-1:0][`AXI_DATA_BITS-1:0] WDATA_M;
+    logic [NUM_M-1:0][`AXI_STRB_BITS-1:0] WSTRB_M;
+    logic [NUM_M-1:0]                     WLAST_M;
+    logic [NUM_M-1:0]                     WVALID_M;
+    logic [NUM_M-1:0]                     WREADY_M;
+
+    logic [NUM_M-1:0][`AXI_ID_BITS-1:0]   BID_M;
+    logic [NUM_M-1:0][1:0]                BRESP_M;
+    logic [NUM_M-1:0]                     BVALID_M;
+    logic [NUM_M-1:0]                     BREADY_M;
+
+	logic [NUM_S-1:0][`AXI_IDS_BITS-1:0]  AWID_S;
+    logic [NUM_S-1:0][`AXI_ADDR_BITS-1:0] AWADDR_S;
+    logic [NUM_S-1:0][`AXI_LEN_BITS-1:0]  AWLEN_S;
+    logic [NUM_S-1:0][`AXI_SIZE_BITS-1:0] AWSIZE_S;
+    logic [NUM_S-1:0][1:0]                AWBURST_S;
+    logic [NUM_S-1:0]                     AWVALID_S;
+    logic [NUM_S-1:0]                     AWREADY_S;
+
+    logic [NUM_S-1:0][`AXI_DATA_BITS-1:0] WDATA_S;
+    logic [NUM_S-1:0][`AXI_STRB_BITS-1:0] WSTRB_S;
+    logic [NUM_S-1:0]                     WLAST_S;
+    logic [NUM_S-1:0]                     WVALID_S;
+    logic [NUM_S-1:0]                     WREADY_S;
+
+    logic [NUM_S-1:0][`AXI_IDS_BITS-1:0]  BID_S;
+    logic [NUM_S-1:0][1:0]                BRESP_S;
+    logic [NUM_S-1:0]                     BVALID_S;
+    logic [NUM_S-1:0]                     BREADY_S;
+
+	// ============================================================
+	// Master 0 Write Channel Default Assignment
+	// ============================================================
+	assign AWID_M[0]    = `AXI_ID_BITS'd0;
+	assign AWADDR_M[0]  = `AXI_ADDR_BITS'd0;
+	assign AWLEN_M[0]   = `AXI_LEN_BITS'd0;
+	assign AWSIZE_M[0]  = `AXI_SIZE_BITS'd0;
+	assign AWBURST_M[0] = 2'd0;
+	assign AWVALID_M[0] = 1'b0;
+
+	assign WDATA_M[0]   = `AXI_DATA_BITS'd0;
+	assign WSTRB_M[0]   = `AXI_STRB_BITS'd0;
+	assign WLAST_M[0]   = 1'b0;
+	assign WVALID_M[0]  = 1'b0;
+
+	assign BREADY_M[0]  = 1'b0;
+
+	// ============================================================
+	// Module Instance
+	// ============================================================
+	CPU_wrapper CPU_wrapper(
+		.ACLK            (clk                ),
+		.ARESETn         (rst                ),
+
+        // Master 0
+		.ARID_M0        (ARID_M[0]         ),
+		.ARADDR_M0      (ARADDR_M[0]       ),
+		.ARLEN_M0       (ARLEN_M[0]        ),
+		.ARSIZE_M0      (ARSIZE_M[0]       ),
+		.ARBURST_M0     (ARBURST_M[0]      ),
+		.ARVALID_M0     (ARVALID_M[0]      ),
+		.ARREADY_M0     (ARREADY_M[0]      ),
+
+		.RID_M0         (RID_M[0]          ),
+		.RDATA_M0       (RDATA_M[0]        ),
+		.RRESP_M0       (RRESP_M[0]        ),
+		.RLAST_M0       (RLAST_M[0]        ),
+		.RVALID_M0      (RVALID_M[0]       ),
+		.RREADY_M0      (RREADY_M[0]       ),
+
+        // Master 1
+		.ARID_M1        (ARID_M[1]         ),
+		.ARADDR_M1      (ARADDR_M[1]       ),
+		.ARLEN_M1       (ARLEN_M[1]        ),
+		.ARSIZE_M1      (ARSIZE_M[1]       ),
+		.ARBURST_M1     (ARBURST_M[1]      ),
+		.ARVALID_M1     (ARVALID_M[1]      ),
+		.ARREADY_M1     (ARREADY_M[1]      ),
+
+		.RID_M1         (RID_M[1]          ),
+		.RDATA_M1       (RDATA_M[1]        ),
+		.RRESP_M1       (RRESP_M[1]        ),
+		.RLAST_M1       (RLAST_M[1]        ),
+		.RVALID_M1      (RVALID_M[1]       ),
+		.RREADY_M1      (RREADY_M[1]       ),
+
+		.AWID_M1        (AWID_M[1]         ),
+		.AWADDR_M1      (AWADDR_M[1]       ),
+		.AWLEN_M1       (AWLEN_M[1]        ),
+		.AWSIZE_M1      (AWSIZE_M[1]       ),
+		.AWBURST_M1     (AWBURST_M[1]      ),
+		.AWVALID_M1     (AWVALID_M[1]      ),
+		.AWREADY_M1     (AWREADY_M[1]      ),
+
+		.WDATA_M1       (WDATA_M[1]        ),
+		.WSTRB_M1       (WSTRB_M[1]        ),
+		.WLAST_M1       (WLAST_M[1]        ),
+		.WVALID_M1      (WVALID_M[1]       ),
+		.WREADY_M1      (WREADY_M[1]       ),
+
+		.BID_M1         (BID_M[1]          ),
+		.BRESP_M1       (BRESP_M[1]        ),
+		.BVALID_M1      (BVALID_M[1]       ),
+		.BREADY_M1      (BREADY_M[1]       )
+	);
+
+	SRAM_wrapper IM1(
+		.clk			(clk				),
+		.rst			(rst     			),
+
+		.ARID_S			(ARID_S[0]			),
+		.ARADDR_S		(ARADDR_S[0]		),
+		.ARLEN_S		(ARLEN_S[0]			),
+		.ARSIZE_S		(ARSIZE_S[0]		),
+		.ARBURST_S		(ARBURST_S[0]		),
+		.ARVALID_S		(ARVALID_S[0]		),
+		.ARREADY_S		(ARREADY_S[0]		),
+
+		.RID_S			(RID_S[0]			),
+		.RDATA_S		(RDATA_S[0]			),
+		.RRESP_S		(RRESP_S[0]			),
+		.RLAST_S		(RLAST_S[0]			),
+		.RVALID_S		(RVALID_S[0]		),
+		.RREADY_S		(RREADY_S[0]		),
+
+		.AWID_S			(AWID_S[0]			),
+		.AWADDR_S		(AWADDR_S[0]		),
+		.AWLEN_S		(AWLEN_S[0]			),
+		.AWSIZE_S		(AWSIZE_S[0]		),
+		.AWBURST_S		(AWBURST_S[0]		),
+		.AWVALID_S		(AWVALID_S[0]		),
+		.AWREADY_S		(AWREADY_S[0]		),
+
+		.WDATA_S		(WDATA_S[0]			),
+		.WSTRB_S		(WSTRB_S[0]			),
+		.WLAST_S		(WLAST_S[0]			),
+		.WVALID_S		(WVALID_S[0]		),
+		.WREADY_S		(WREADY_S[0]		),
+
+		.BID_S			(BID_S[0]			),
+		.BRESP_S		(BRESP_S[0]			),
+		.BVALID_S		(BVALID_S[0]		),
+		.BREADY_S		(BREADY_S[0]		)
+	);
+
+	SRAM_wrapper DM1(
+		.clk			(clk				),
+		.rst			(rst	     		),
+
+		.ARID_S			(ARID_S[1]			),
+		.ARADDR_S		(ARADDR_S[1]		),
+		.ARLEN_S		(ARLEN_S[1]			),
+		.ARSIZE_S		(ARSIZE_S[1]		),
+		.ARBURST_S		(ARBURST_S[1]		),
+		.ARVALID_S		(ARVALID_S[1]		),
+		.ARREADY_S		(ARREADY_S[1]		),
+
+		.RID_S			(RID_S[1]			),
+		.RDATA_S		(RDATA_S[1]			),
+		.RRESP_S		(RRESP_S[1]			),
+		.RLAST_S		(RLAST_S[1]			),
+		.RVALID_S		(RVALID_S[1]		),
+		.RREADY_S		(RREADY_S[1]		),
+
+		.AWID_S			(AWID_S[1]			),
+		.AWADDR_S		(AWADDR_S[1]		),
+		.AWLEN_S		(AWLEN_S[1]			),
+		.AWSIZE_S		(AWSIZE_S[1]		),
+		.AWBURST_S		(AWBURST_S[1]		),
+		.AWVALID_S		(AWVALID_S[1]		),
+		.AWREADY_S		(AWREADY_S[1]		),
+
+		.WDATA_S		(WDATA_S[1]			),
+		.WSTRB_S		(WSTRB_S[1]			),
+		.WLAST_S		(WLAST_S[1]			),
+		.WVALID_S		(WVALID_S[1]		),
+		.WREADY_S		(WREADY_S[1]		),
+
+		.BID_S			(BID_S[1]			),
+		.BRESP_S		(BRESP_S[1]			),
+		.BVALID_S		(BVALID_S[1]		),
+		.BREADY_S		(BREADY_S[1]		)
+	);
+
+
+	AXI #(
+		.NUM_M     	(NUM_M		   ),
+    	.NUM_S     	(NUM_S		   ),
+    	.MIDX_BITS  (MIDX_BITS	   ),
+    	.SIDX_BITS 	(SIDX_BITS	   )
+	) AXI (
+		.clk       (clk           ),
+		.rst    (rst           ),
+
+		.ARID_M     (ARID_M        ),
+		.ARADDR_M   (ARADDR_M      ),
+		.ARLEN_M    (ARLEN_M       ),
+		.ARSIZE_M   (ARSIZE_M      ),
+		.ARBURST_M  (ARBURST_M     ),
+		.ARVALID_M  (ARVALID_M     ),
+		.ARREADY_M  (ARREADY_M     ),
+
+		.RID_M      (RID_M         ),
+		.RDATA_M    (RDATA_M       ),
+		.RRESP_M    (RRESP_M       ),
+		.RLAST_M    (RLAST_M       ),
+		.RVALID_M   (RVALID_M      ),
+		.RREADY_M   (RREADY_M      ),
+
+		.ARID_S     (ARID_S        ),
+		.ARADDR_S   (ARADDR_S      ),
+		.ARLEN_S    (ARLEN_S       ),
+		.ARSIZE_S   (ARSIZE_S      ),
+		.ARBURST_S  (ARBURST_S     ),
+		.ARVALID_S  (ARVALID_S     ),
+		.ARREADY_S  (ARREADY_S     ),
+
+		.RID_S      (RID_S         ),
+		.RDATA_S    (RDATA_S       ),
+		.RRESP_S    (RRESP_S       ),
+		.RLAST_S    (RLAST_S       ),
+		.RVALID_S   (RVALID_S      ),
+		.RREADY_S   (RREADY_S      ),
+
+		.AWID_M     (AWID_M        ),
+		.AWADDR_M   (AWADDR_M      ),
+		.AWLEN_M    (AWLEN_M       ),
+		.AWSIZE_M   (AWSIZE_M      ),
+		.AWBURST_M  (AWBURST_M     ),
+		.AWVALID_M  (AWVALID_M     ),
+		.AWREADY_M  (AWREADY_M     ),
+
+		.WDATA_M    (WDATA_M       ),
+		.WSTRB_M    (WSTRB_M       ),
+		.WLAST_M    (WLAST_M       ),
+		.WVALID_M   (WVALID_M      ),
+		.WREADY_M   (WREADY_M      ),
+
+		.BID_M      (BID_M         ),
+		.BRESP_M    (BRESP_M       ),
+		.BVALID_M   (BVALID_M      ),
+		.BREADY_M   (BREADY_M      ),
+
+		.AWID_S     (AWID_S        ),
+		.AWADDR_S   (AWADDR_S      ),
+		.AWLEN_S    (AWLEN_S       ),
+		.AWSIZE_S   (AWSIZE_S      ),
+		.AWBURST_S  (AWBURST_S     ),
+		.AWVALID_S  (AWVALID_S     ),
+		.AWREADY_S  (AWREADY_S     ),
+
+		.WDATA_S    (WDATA_S       ),
+		.WSTRB_S    (WSTRB_S       ),
+		.WLAST_S    (WLAST_S       ),
+		.WVALID_S   (WVALID_S      ),
+		.WREADY_S   (WREADY_S      ),
+
+		.BID_S      (BID_S         ),
+		.BRESP_S    (BRESP_S       ),
+		.BVALID_S   (BVALID_S      ),
+		.BREADY_S   (BREADY_S      )
+	);
+
+
+endmodule
