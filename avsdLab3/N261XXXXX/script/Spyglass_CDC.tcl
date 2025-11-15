@@ -27,5 +27,5 @@ run_goal
 current_goal cdc/cdc_verify -alltop
 run_goal
 
-current_goal cdc/cdc_abstrast -alltop
+current_goal cdc/cdc_abstract -alltop 
 run_goal
