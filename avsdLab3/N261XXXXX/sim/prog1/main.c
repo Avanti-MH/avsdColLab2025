@@ -35,8 +35,48 @@ void trap_handler(void) {
     }
 }
 
+// 這兩個變數是從 data.s 引入的外部符號
+extern int array_size;
+extern int array_addr[];
+extern int _test_start;
+int partition(int arr[], int low, int high) {
+    int pivot = arr[high];  // Choose the last element as the pivot
+    int i = (low - 1);  // Index of smaller element
 
+    for (int j = low; j <= high - 1; j++) {
+        if (arr[j] < pivot) {
+            i++;  // Increment index of smaller element
+            // Swap arr[i] and arr[j]
+            int temp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = temp;
+        }
+    }
+
+    // Swap the pivot element with the element at index i + 1
+    int temp = arr[i + 1];
+    arr[i + 1] = arr[high];
+    arr[high] = temp;
+
+    return (i + 1);  // Return the pivot index
+}
+
+// Quick Sort function
+void quickSort(int arr[], int low, int high) {
+    if (low < high) {
+        int pi = partition(arr, low, high);  // Find the pivot index
+
+        quickSort(arr, low, pi - 1);  // Recursively sort the left part
+        quickSort(arr, pi + 1, high);  // Recursively sort the right part
+    }
+}
 
 int main() {
+    // 排序
+    quickSort(array_addr, 0, array_size - 1);
+    int i;
+    for (i = 0; i < array_size; i++) 
+        *(&_test_start + i) = array_addr[i];
 
+    return 0;
 }
