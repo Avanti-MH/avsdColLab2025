@@ -36,9 +36,7 @@ void trap_handler(void) {
 }
 
 extern unsigned char _test_start;
-extern const unsigned char _binary_image_bmp_start[];
-extern const unsigned char _binary_image_bmp_end[];
-extern const unsigned char _binary_image_bmp_size[];
+extern const unsigned char _binary_image_bmp_start;
 
 typedef struct {
     uint16_t bfType;      // 'BM' (0x4D42)
@@ -69,16 +67,16 @@ static void bmp_to_grayscale(uint8_t *bmp)
     DIBHeader *dh = (DIBHeader *)(bmp + sizeof(BMPHeader));
 
     /* 驗證 BMP 格式與基本屬性 */
-    if (bh->bfType != 0x4D42) return;       /* 檔頭錯誤 */
-    if (dh->biBitCount != 24) return;       /* 僅支援 24-bit */
-    if (dh->biCompression != 0) return;     /* 僅支援未壓縮 */
+    if (bh->bfType          != 0x4D42)  return;         /* 檔頭錯誤 */
+    if (dh->biBitCount      != 24)      return;         /* 僅支援 24-bit */
+    if (dh->biCompression   != 0)       return;         /* 僅支援未壓縮 */
 
     uint32_t width  = (uint32_t)dh->biWidth;
     uint32_t height = (dh->biHeight > 0) ? (uint32_t)dh->biHeight : (uint32_t)(-dh->biHeight);
     uint32_t offset = bh->bfOffBits;
 
     for (int i = 0; i < offset; i++)
-		*(&_test_start + i) = *(&bmp + i);
+		*(&_test_start + i) = (unsigned char *)(&bmp + i);
 
     /* 每行對齊至4位元組邊界 */
     uint32_t rowSize = (width * 3 + 3) & ~3;
@@ -95,9 +93,9 @@ static void bmp_to_grayscale(uint8_t *bmp)
             /* 整數近似灰階公式 */
             uint8_t gray = (uint8_t)((R * 77 + G * 150 + B * 29) >> 8);
 
-            *(&_test_start + offset + y * rowSize + x * 3 + 0) = gray;
-            *(&_test_start + offset + y * rowSize + x * 3 + 1) = gray;
-            *(&_test_start + offset + y * rowSize + x * 3 + 2) = gray;
+            *(&_test_start + y * rowSize + x * 3 + 0) = (unsigned char)gray;
+            *(&_test_start + y * rowSize + x * 3 + 1) = (unsigned char)gray;
+            *(&_test_start + y * rowSize + x * 3 + 2) = (unsigned char)gray;
         }
     }
 }
