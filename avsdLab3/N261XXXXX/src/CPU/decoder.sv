@@ -1,4 +1,4 @@
-module decoder (
+module Decoder (
     input  logic [31:0] inst,
     output logic [4:0]  rs1_index,
     output logic [4:0]  rs2_index,
@@ -7,7 +7,9 @@ module decoder (
     output logic [3:0]  func,
     output logic        is_mtype,
     output logic        is_fsub,
-    output logic [1:0]  csrOp
+    output logic [11:0] csrIdx,
+    output logic        WFI,
+    output logic        MRET
 );
 
     // ============================================================
@@ -21,7 +23,9 @@ module decoder (
         func       = {inst[14:12], inst[30]};
         is_mtype   = inst[25];
         is_fsub    = inst[27];
-        csrOp      = {inst[27], inst[21]};
+        csrIdx     = inst[31:20];
+        WFI        = (inst == 32'h1050_0073);
+        MRET       = (inst == 32'h3020_0073);
     end
 
 endmodule

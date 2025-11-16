@@ -131,7 +131,7 @@ module ROM_wrapper (
             end
             ReadData: begin
                 RID_S     = ARID;
-                RDATA_S   = (Buffer_valid) ? ReadBuffer : ROM_out;
+                RDATA_S   = (Buffer_valid) ? Buffer : ROM_out;
                 RRESP_S   = `AXI_RESP_OKAY;
                 RVALID_S  = 1'b1;
                 RLAST_S   = 1'b1;

@@ -3,12 +3,12 @@
 module Write #(
     parameter int NUM_M     = 3,
     parameter int NUM_S     = 6,
-    parameter int MIDX_BITS = 2,
-    parameter int SIDX_BITS = 3
+    parameter int MIDX_BITS = 3,
+    parameter int SIDX_BITS = 2
 ) (
     // From Arbiter
-    input  logic [MIDX_BITS-1:0] SWIdx [NUM_S:0],
-    input  logic [SIDX_BITS-1:0] MWIdx [NUM_M-1:0],
+    input  logic [SIDX_BITS-1:0] SWIdx [NUM_S:0],
+    input  logic [MIDX_BITS-1:0] MWIdx [NUM_M-1:0],
 
     // Master AW channels (inputs from masters, padded with dummy)
     input  logic [NUM_M:0][`AXI_ID_BITS-1:0]      AWID_M,
@@ -55,22 +55,24 @@ module Write #(
     output logic [NUM_S:0]                        BREADY_S
 );
 
-    localparam logic [`AXI_ADDR_BITS-1:0] S_BEGIN [0:NUM_S-1] = '{
+    localparam logic [`AXI_ADDR_BITS-1:0] S_BEGIN [0:NUM_S+1] = '{
+        32'h0000_0000, // XX: NONE
         32'h0000_0000, // S0: ROM
         32'h0001_0000, // S1: IM
         32'h0002_0000, // S2: DM
-        32'h0000_0000, // S3: DMA 32'h1002_0000
-        32'h0000_0000, // S4: WDT 32'h1001_0000
-        32'h2000_0000  // S5: DRAM
+        32'h1002_0000, // S3: DMA 32'h1002_0000
+        32'h1001_0000, // S4: WDT 32'h1001_0000
+        32'h2000_0000, // S5: DRAM
+        32'h0000_0000  // S6: DEFAULT
     };
 
 
     // Combinational multiplexing for AW, W, and B channels
     always_comb begin
         // Assignments for slaves
-        for (int s = 0; s < NUM_S; s++) begin
+        for (int s = 0; s < NUM_S+1; s++) begin
             AWID_S[s]    = {4'd0, AWID_M[SWIdx[s]]};
-            AWADDR_S[s]  = AWADDR_M[SWIdx[s]] - S_BEGIN[SWIdx[s]];
+            AWADDR_S[s]  = AWADDR_M[SWIdx[s]] - S_BEGIN[s+1];
             AWLEN_S[s]   = AWLEN_M[SWIdx[s]];
             AWSIZE_S[s]  = AWSIZE_M[SWIdx[s]];
             AWBURST_S[s] = AWBURST_M[SWIdx[s]];

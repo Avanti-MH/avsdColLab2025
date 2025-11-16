@@ -36,9 +36,8 @@ module WDT(
     // Set up WTOCNT
     // ============================================================
     always_ff @(posedge clk2 or posedge rst2) begin
-        if (rst2) begin          threshold <= 32'd0;
+        if (rst2)               threshold <= 32'd0;
         else if (WTOCNT_RVALID) threshold <= WTOCNT;
-        end
     end
 
     // ============================================================
@@ -50,7 +49,7 @@ module WDT(
     // ---------------------------------------
     always_ff @(posedge clk2 or posedge rst2) begin
         if (rst2) CurrentState <= DISABLED;
-        else     CurrentState <= NextState;
+        else      CurrentState <= NextState;
     end
 
     // ---------------------------------------

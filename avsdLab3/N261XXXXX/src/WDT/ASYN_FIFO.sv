@@ -52,7 +52,7 @@ module ASYN_FIFO #(
             wfull <= 1'b0;
         else
             // full: MSB 不同且其餘位相等
-            wfull <= (wrPtrGray[PTR_WIDTH-1] != rdPtrGraySync2[PTR_WIDTH-1]) &&
+            wfull <= (wrPtrGray[PTR_WIDTH-1]   != rdPtrGraySync2[PTR_WIDTH-1]) &&
                      (wrPtrGray[PTR_WIDTH-2:0] == rdPtrGraySync2[PTR_WIDTH-2:0]);
     end
 
@@ -68,14 +68,14 @@ module ASYN_FIFO #(
     // ============================================================
     always_ff @(posedge wclk or posedge wrst) begin
         if (wrst) begin
-            wrPtrBin  <= PTR_WIDTH'd0;
-            wrPtrGray <= PTR_WIDTH'd0;
+            wrPtrBin  <= PTR_WIDTH'(0);
+            wrPtrGray <= PTR_WIDTH'(0);
             for (int i = 0; i < FIFO_DEPTH; i++)
                 mem[i] <= {DATA_WIDTH{1'b0}};
         end else if (wpush & ~wfull) begin
             mem[wrPtrBin[ADDR_WIDTH-1:0]] <= FIFO_in;
-            wrPtrBin  <= wrPtrBin + PTR_WIDTH'd1;
-            wrPtrGray <= bin2gray(wrPtrBin + PTR_WIDTH'd1);
+            wrPtrBin  <= wrPtrBin + PTR_WIDTH'(1);
+            wrPtrGray <= bin2gray(wrPtrBin + PTR_WIDTH'(1));
         end
     end
 
@@ -84,11 +84,11 @@ module ASYN_FIFO #(
     // ============================================================
     always_ff @(posedge rclk or posedge rrst) begin
         if (rrst) begin
-            rdPtrBin  <= PTR_WIDTH'd0;
-            rdPtrGray <= PTR_WIDTH'd0;
+            rdPtrBin  <= PTR_WIDTH'(0);
+            rdPtrGray <= PTR_WIDTH'(0);
         end else if (rpop & ~rempty) begin
-            rdPtrBin  <= rdPtrBin + PTR_WIDTH'd1;
-            rdPtrGray <= bin2gray(rdPtrBin + PTR_WIDTH'd1);
+            rdPtrBin  <= rdPtrBin + PTR_WIDTH'(1);
+            rdPtrGray <= bin2gray(rdPtrBin + PTR_WIDTH'(1));
         end
     end
 
@@ -99,8 +99,8 @@ module ASYN_FIFO #(
     // ============================================================
     always_ff @(posedge wclk or posedge wrst) begin
         if (wrst) begin
-            rdPtrGraySync1 <= PTR_WIDTH'd0;
-            rdPtrGraySync2 <= PTR_WIDTH'd0;
+            rdPtrGraySync1 <= PTR_WIDTH'(0);
+            rdPtrGraySync2 <= PTR_WIDTH'(0);
         end else begin
             rdPtrGraySync1 <= rdPtrGray;
             rdPtrGraySync2 <= rdPtrGraySync1;
@@ -109,8 +109,8 @@ module ASYN_FIFO #(
 
     always_ff @(posedge rclk or posedge rrst) begin
         if (rrst) begin
-            wrPtrGraySync1 <= PTR_WIDTH'd0;
-            wrPtrGraySync2 <= PTR_WIDTH'd0;
+            wrPtrGraySync1 <= PTR_WIDTH'(0);
+            wrPtrGraySync2 <= PTR_WIDTH'(0);
         end else begin
             wrPtrGraySync1 <= wrPtrGray;
             wrPtrGraySync2 <= wrPtrGraySync1;

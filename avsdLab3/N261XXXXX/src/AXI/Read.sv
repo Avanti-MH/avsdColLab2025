@@ -1,12 +1,12 @@
 module Read #(
     parameter int NUM_M     = 3,
     parameter int NUM_S     = 6,
-    parameter int MIDX_BITS = 2,
-    parameter int SIDX_BITS = 3
+    parameter int MIDX_BITS = 3,
+    parameter int SIDX_BITS = 2
 ) (
     // From Arbiter
-    input  logic [MIDX_BITS-1:0] SRIdx [NUM_S-1:0],
-    input  logic [SIDX_BITS-1:0] MRIdx [NUM_M-1:0],
+    input  logic [SIDX_BITS-1:0] SRIdx [NUM_S:0],
+    input  logic [MIDX_BITS-1:0] MRIdx [NUM_M-1:0],
 
     // Master AR channels (inputs from masters, padded with dummy)
     input  logic [NUM_M:0][`AXI_ID_BITS-1:0]      ARID_M,
@@ -43,13 +43,15 @@ module Read #(
     output logic [NUM_S:0]                        RREADY_S
 );
 
-    localparam logic [`AXI_ADDR_BITS-1:0] S_BEGIN [0:NUM_S-1] = '{
+    localparam logic [`AXI_ADDR_BITS-1:0] S_BEGIN [0:NUM_S+1] = '{
+        32'h0000_0000, // XX: NONE
         32'h0000_0000, // S0: ROM
         32'h0001_0000, // S1: IM
         32'h0002_0000, // S2: DM
-        32'h0000_0000, // S3: DMA 32'h1002_0000
-        32'h0000_0000, // S4: WDT 32'h1001_0000
-        32'h2000_0000  // S5: DRAM
+        32'h1002_0000, // S3: DMA
+        32'h1001_0000, // S4: WDT
+        32'h2000_0000, // S5: DRAM
+        32'h0000_0000  // S6: DEFAULT
     };
 
     // Combinational multiplexing for AR and R channels
@@ -57,7 +59,7 @@ module Read #(
         // Assignments for slaves
         for (int s = 0; s < NUM_S+1; s++) begin
             ARID_S[s]    = {4'd0, ARID_M[SRIdx[s]]};
-            ARADDR_S[s]  = ARADDR_M[SRIdx[s]] - S_BEGIN[SRIdx[s]];
+            ARADDR_S[s]  = ARADDR_M[SRIdx[s]] - S_BEGIN[s+1];
             ARLEN_S[s]   = ARLEN_M[SRIdx[s]];
             ARSIZE_S[s]  = ARSIZE_M[SRIdx[s]];
             ARBURST_S[s] = ARBURST_M[SRIdx[s]];

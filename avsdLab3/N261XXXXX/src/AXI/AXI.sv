@@ -18,15 +18,15 @@
 `include "../include/AXI_define.svh"
 `include "../src/AXI/Arbiter.sv"
 `include "../src/AXI/DefaultSlave.sv"
-`include "../src/AXI/Decoder.sv"
+`include "../src/AXI/Request_Decoder.sv"
 `include "../src/AXI/Read.sv"
 `include "../src/AXI/Write.sv"
 
 module AXI #(
     parameter int NUM_M     = 3,
     parameter int NUM_S     = 6,
-    parameter int MIDX_BITS = 2,
-    parameter int SIDX_BITS = 3
+    parameter int MIDX_BITS = 3,
+    parameter int SIDX_BITS = 2
 )(
     input  logic clk,
     input  logic rst,
@@ -129,12 +129,12 @@ module AXI #(
     // Index Arrays
     // ------------------------------------------------------------
     // Slave Indices
-    logic [MIDX_BITS-1:0] SRIdx [NUM_S:0];
-    logic [MIDX_BITS-1:0] SWIdx [NUM_S:0];
+    logic [SIDX_BITS-1:0] SRIdx [NUM_S:0];
+    logic [SIDX_BITS-1:0] SWIdx [NUM_S:0];
 
     // Master Indices
-    logic [SIDX_BITS-1:0] MRIdx [NUM_M-1:0];
-    logic [SIDX_BITS-1:0] MWIdx [NUM_M-1:0];
+    logic [MIDX_BITS-1:0] MRIdx [NUM_M-1:0];
+    logic [MIDX_BITS-1:0] MWIdx [NUM_M-1:0];
 
 	// ============================================================
 	// Default Slave Signals and Instance (Slave 6)
@@ -175,51 +175,51 @@ module AXI #(
 	logic                       BREADY_DEFAULT;
 
 	// ---------------------------------------
-	// Default Slave Instance
-	// ---------------------------------------
-	DefaultSlave uDefaultSlave(
-		.clk             (clk             ),
-		.rst             (rst             ),
+    // Default Slave Instance
+    // ---------------------------------------
+    DefaultSlave uDefaultSlave (
+        .clk          (clk              ),
+        .rst          (rst              ),
 
-		.ARID_DEFAULT    (ARID_DEFAULT    ),
-		.ARADDR_DEFAULT  (ARADDR_DEFAULT  ),
-		.ARLEN_DEFAULT   (ARLEN_DEFAULT   ),
-		.ARSIZE_DEFAULT  (ARSIZE_DEFAULT  ),
-		.ARBURST_DEFAULT (ARBURST_DEFAULT ),
-		.ARVALID_DEFAULT (ARVALID_DEFAULT ),
-		.ARREADY_DEFAULT (ARREADY_DEFAULT ),
+        .ARID_S       (ARID_DEFAULT     ),
+        .ARADDR_S     (ARADDR_DEFAULT   ),
+        .ARLEN_S      (ARLEN_DEFAULT    ),
+        .ARSIZE_S     (ARSIZE_DEFAULT   ),
+        .ARBURST_S    (ARBURST_DEFAULT  ),
+        .ARVALID_S    (ARVALID_DEFAULT  ),
+        .ARREADY_S    (ARREADY_DEFAULT  ),
 
-		.RID_DEFAULT     (RID_DEFAULT     ),
-		.RDATA_DEFAULT   (RDATA_DEFAULT   ),
-		.RRESP_DEFAULT   (RRESP_DEFAULT   ),
-		.RLAST_DEFAULT   (RLAST_DEFAULT   ),
-		.RVALID_DEFAULT  (RVALID_DEFAULT  ),
-		.RREADY_DEFAULT  (RREADY_DEFAULT  ),
+        .RID_S        (RID_DEFAULT      ),
+        .RDATA_S      (RDATA_DEFAULT    ),
+        .RRESP_S      (RRESP_DEFAULT    ),
+        .RLAST_S      (RLAST_DEFAULT    ),
+        .RVALID_S     (RVALID_DEFAULT   ),
+        .RREADY_S     (RREADY_DEFAULT   ),
 
-		.AWID_DEFAULT    (AWID_DEFAULT    ),
-		.AWADDR_DEFAULT  (AWADDR_DEFAULT  ),
-		.AWLEN_DEFAULT   (AWLEN_DEFAULT   ),
-		.AWSIZE_DEFAULT  (AWSIZE_DEFAULT  ),
-		.AWBURST_DEFAULT (AWBURST_DEFAULT ),
-		.AWVALID_DEFAULT (AWVALID_DEFAULT ),
-		.AWREADY_DEFAULT (AWREADY_DEFAULT ),
+        .AWID_S       (AWID_DEFAULT     ),
+        .AWADDR_S     (AWADDR_DEFAULT   ),
+        .AWLEN_S      (AWLEN_DEFAULT    ),
+        .AWSIZE_S     (AWSIZE_DEFAULT   ),
+        .AWBURST_S    (AWBURST_DEFAULT  ),
+        .AWVALID_S    (AWVALID_DEFAULT  ),
+        .AWREADY_S    (AWREADY_DEFAULT  ),
 
-		.WDATA_DEFAULT   (WDATA_DEFAULT   ),
-		.WSTRB_DEFAULT   (WSTRB_DEFAULT   ),
-		.WLAST_DEFAULT   (WLAST_DEFAULT   ),
-		.WVALID_DEFAULT  (WVALID_DEFAULT  ),
-		.WREADY_DEFAULT  (WREADY_DEFAULT  ),
+        .WDATA_S      (WDATA_DEFAULT    ),
+        .WSTRB_S      (WSTRB_DEFAULT    ),
+        .WLAST_S      (WLAST_DEFAULT    ),
+        .WVALID_S     (WVALID_DEFAULT   ),
+        .WREADY_S     (WREADY_DEFAULT   ),
 
-		.BID_DEFAULT     (BID_DEFAULT     ),
-		.BRESP_DEFAULT   (BRESP_DEFAULT   ),
-		.BVALID_DEFAULT  (BVALID_DEFAULT  ),
-		.BREADY_DEFAULT  (BREADY_DEFAULT  )
-	);
+        .BID_S        (BID_DEFAULT      ),
+        .BRESP_S      (BRESP_DEFAULT    ),
+        .BVALID_S     (BVALID_DEFAULT   ),
+        .BREADY_S     (BREADY_DEFAULT   )
+    );
 
     // ============================================================
 	// Decoder
 	// ============================================================
-	Decoder #(
+	Request_Decoder #(
 		.NUM_M           (NUM_M          ),
 		.NUM_S           (NUM_S          )
     ) req_decoder (

@@ -1,5 +1,6 @@
-`include "../include/AXI_def.svh"
+`include "../include/AXI_define.svh"
 `include "../src/WDT/WDT.sv"
+`include "../src/WDT/ASYN_FIFO.sv"
 
 module WDT_wrapper (
 
@@ -66,9 +67,9 @@ module WDT_wrapper (
     // ============================================================
     // Registers Address Mapping
     // ============================================================
-    localparam logic [31:0] ADDR_LIST [0:2] = '{32'h1001_0100,
-                                                32'h1001_0200,
-                                                32'h1001_0300};
+    localparam logic [31:0] ADDR_LIST [0:2] = '{32'h0000_0100,
+                                                32'h0000_0200,
+                                                32'h0000_0300};
 
     // ============================================================
     // Watchdog Timer Registers
@@ -197,7 +198,7 @@ module WDT_wrapper (
     genvar i;
     generate
     for (i = 0; i < 3; i++) begin : fifo_gen
-        ASYN_FIFO #(.WIDTH(`AXI_DATA_BITS)) asyn_fifo (
+        ASYN_FIFO #(.DATA_WIDTH(`AXI_DATA_BITS)) asyn_fifo (
             .wclk(clk),
             .wrst(rst),
             .wpush(wpush[i]),

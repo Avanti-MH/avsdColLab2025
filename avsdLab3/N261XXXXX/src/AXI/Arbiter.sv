@@ -1,8 +1,8 @@
 module Arbiter #(
     parameter int NUM_M     = 3,
     parameter int NUM_S     = 6,
-    parameter int MIDX_BITS = 2,
-    parameter int SIDX_BITS = 3
+    parameter int MIDX_BITS = 3,
+    parameter int SIDX_BITS = 2
 ) (
     input  logic                      clk,
     input  logic                      rst,
@@ -19,11 +19,11 @@ module Arbiter #(
     input  logic [NUM_S:0]            RLAST_S,
     input  logic [NUM_S:0]            BVALID_S,
 
-    output logic [MIDX_BITS-1:0]      SRIdx [NUM_S:0],
-    output logic [MIDX_BITS-1:0]      SWIdx [NUM_S:0],
+    output logic [SIDX_BITS-1:0]      SRIdx [NUM_S:0],
+    output logic [SIDX_BITS-1:0]      SWIdx [NUM_S:0],
 
-    output logic [SIDX_BITS-1:0]      MRIdx [NUM_M-1:0],
-    output logic [SIDX_BITS-1:0]      MWIdx [NUM_M-1:0]
+    output logic [MIDX_BITS-1:0]      MRIdx [NUM_M-1:0],
+    output logic [MIDX_BITS-1:0]      MWIdx [NUM_M-1:0]
 );
 
     // ============================================================

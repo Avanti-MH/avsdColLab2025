@@ -1,4 +1,4 @@
-module fpu (
+module FPU (
     input [31:0] src1,
     input [31:0] src2,
     input sub,

@@ -81,7 +81,7 @@ module DRAM_wrapper (
 
     logic                      buf_RVALID;
     logic [`AXI_DATA_BITS-1:0] buf_DRAM_Q;
-    logic                      Rd, Wr, HitRow;
+    logic                      Rd, Wr, HitRow, MissRow;
 
     //====================================================
     // Finite State Machine
@@ -161,7 +161,7 @@ module DRAM_wrapper (
                 RVALID_S  = (DRAM_valid | buf_RVALID);
             end
             WriteColumn:begin
-                WREADY_S = (DLY_cnt == 3'd4)
+                WREADY_S = (DLY_cnt == 3'd4);
             end
             WriteResponse:begin
                 BID_S = AWID;
@@ -169,8 +169,8 @@ module DRAM_wrapper (
                 BRESP_S = `AXI_RESP_OKAY;
             end
             RowHit:begin
-                ARREADY_S = HitRow;
-                AWREADY_S = HitRow;
+                ARREADY_S = 1'b1;
+                AWREADY_S = 1'b1;
             end
             default:begin
             end
@@ -186,16 +186,11 @@ module DRAM_wrapper (
             AWID <= `AXI_IDS_BITS'b0;
             ADDR <= `AXI_ADDR_BITS'b0;
             LEN  <= `AXI_LEN_BITS'b0;
-        end else if(CurrentState == RowActivation)begin
+        end else if ((CurrentState == RowActivation) || (CurrentState == RowHit))begin
             ARID <= (ARVALID_S) ? ARID_S  : ARID;
             AWID <= (AWVALID_S) ? AWID_S  : AWID;
             LEN  <= (ARVALID_S) ? ARLEN_S : (AWVALID_S ? AWLEN_S  : LEN);
             ADDR <= (ARVALID_S) ? ARADDR_S: (AWVALID_S ? AWADDR_S : ADDR);
-        end else if(CurrentState == RowHit)begin
-            ARID <= (ARVALID_S && HitRow) ? ARID_S  : ARID;
-            AWID <= (AWVALID_S && HitRow) ? AWID_S  : AWID;
-            LEN  <= (ARVALID_S && HitRow) ? ARLEN_S : (AWVALID_S && HitRow ? AWLEN_S  : LEN);
-            ADDR <= (ARVALID_S && HitRow) ? ARADDR_S: (AWVALID_S && HitRow ? AWADDR_S : ADDR);
         end
     end
 
@@ -206,7 +201,7 @@ module DRAM_wrapper (
         if (rst) begin
             Rd <= 1'b0;
             Wr <= 1'b0;
-        end else if ((CurrentState == RowActivation) && (ARVALID_S | AWVALID_S)) begin
+        end else if (((CurrentState == RowActivation) || (CurrentState == RowHit)) && (ARVALID_S | AWVALID_S)) begin
             Rd <= ARVALID_S;
             Wr <= AWVALID_S;
         end
@@ -220,6 +215,16 @@ module DRAM_wrapper (
             else if (AWVALID_S && (AWADDR_S[22:12] == ADDR[22:12])) HitRow = 1'b1;
             else                                                    HitRow = 1'b0;
         end else                                                    HitRow = 1'b0;
+    end
+
+    always_ff @(posedge clk or posedge rst) begin
+        if (rst) MissRow <= 1'b0;
+        else begin
+            if ((CurrentState == RowHit) && (ARVALID_S || AWVALID_S))
+                MissRow <= ~HitRow;
+            else if (CurrentState == RowActivation)
+                MissRow <= 1'b0;
+        end
     end
 
     // ============================================================
@@ -244,7 +249,8 @@ module DRAM_wrapper (
                 RowActivation: begin
                     if      (DLY_cnt == 3'd4)        DLY_cnt <= 3'd0;
                     else if (DLY_cnt > 3'd0)         DLY_cnt <= DLY_cnt + 3'd1;
-                    else if (ARVALID_S | AWVALID_S)  DLY_cnt <= 3'd1;
+                    else if (ARVALID_S | AWVALID_S | MissRow)
+                                                     DLY_cnt <= 3'd1;
                 end
                 ReadColumn: begin
                     if (DLY_cnt == 3'd5 && RREADY_S) DLY_cnt <= 3'd0; // When DLY_cnt = 5, ReadData is valid
@@ -253,11 +259,11 @@ module DRAM_wrapper (
                 end
                 WriteColumn: begin
                     if (DLY_cnt == 3'd4 && WVALID_S) DLY_cnt <= 3'd0; // When DLY_cnt = 4, DRAM is ready to write
+                    else if (DLY_cnt == 3'd4)        DLY_cnt <= DLY_cnt;
                     else                             DLY_cnt <= DLY_cnt + 3'd1;
                 end
                 RowHit: begin
-                    if((ARVALID_S | AWVALID_S) && HitRow)
-                                                     DLY_cnt <= DLY_cnt + 3'd1;
+                    if(ARVALID_S | AWVALID_S)        DLY_cnt <= DLY_cnt + 3'd1;
                 end
                 PreCharge: begin
                     if (DLY_cnt == 3'd4)             DLY_cnt <= 3'd0;
@@ -267,6 +273,7 @@ module DRAM_wrapper (
             endcase
         end
     end
+
     // ============================================================
 	// Buffer for ReadData
 	// ============================================================
@@ -282,16 +289,15 @@ module DRAM_wrapper (
             buf_DRAM_Q <= `AXI_DATA_BITS'b0;
         end
     end
+
     // ============================================================
 	// DRAM Interface
 	// ============================================================
-
-
     always_comb begin
         case (CurrentState)
             RowActivation: begin
                 DRAM_CSn  = 1'b0;
-                DRAM_RASn = ((DLY_cnt == 3'd0) && (ARVALID_S | AWVALID_S));
+                DRAM_RASn = ~((DLY_cnt == 3'd0) && (ARVALID_S | AWVALID_S | MissRow));
                 DRAM_CASn = 1'b1;
                 DRAM_WEn  = {`AXI_STRB_BITS{1'b1}};
                 DRAM_A    = (ARVALID_S) ? ARADDR_S[22:12]: (AWVALID_S ? AWADDR_S[22:12] : ADDR[22:12]);
@@ -301,7 +307,7 @@ module DRAM_wrapper (
                 DRAM_CSn  = 1'b0;
                 DRAM_RASn = 1'b1;
                 DRAM_CASn = (DLY_cnt != 3'd0);
-                DRAM_WEn  = `AXI_STRB_BITS'd0;
+                DRAM_WEn  = {`AXI_STRB_BITS{1'b1}};
                 DRAM_A    = {1'b0, ADDR[11:2]} + {7'd0, LEN_cnt};
                 DRAM_D    = `AXI_DATA_BITS'd0;
             end
@@ -309,18 +315,34 @@ module DRAM_wrapper (
                 DRAM_CSn  = 1'b0;
                 DRAM_RASn = 1'b1;
                 DRAM_CASn = (DLY_cnt != 3'd0);
-                DRAM_WEn  = WSTRB_S;
+                DRAM_WEn  = ~WSTRB_S;
                 DRAM_A    = {1'b0, ADDR[11:2]} + {7'd0, LEN_cnt};
                 DRAM_D    = WDATA_S;
             end
-            PreCharge: begin
-                DRAM_CSn  = 1'b0;
-                DRAM_RASn = 1'b0;
-                DRAM_CASn = 1'b1;
-                DRAM_WEn  = `AXI_STRB_BITS'd0;
-                DRAM_A    = 11'd0;
-                DRAM_D    = `AXI_DATA_BITS'd0;
-            end
+            RowHit: begin
+                if ((ARVALID_S || AWVALID_S) && HitRow) begin
+                    DRAM_CSn  = 1'b0;
+                    DRAM_RASn = 1'b1;
+                    DRAM_CASn = 1'b0;
+                    DRAM_WEn  = ARVALID_S ? {`AXI_STRB_BITS{1'b1}} : {`AXI_STRB_BITS{1'b0}};
+                    DRAM_A    = ARVALID_S ? ARADDR_S[11:2] : AWADDR_S[11:2];
+                    DRAM_D    = ARVALID_S ? `AXI_DATA_BITS'd0 : WDATA_S;
+                end else if ((ARVALID_S || AWVALID_S) && ~HitRow) begin
+                    DRAM_CSn  = 1'b0;
+                    DRAM_RASn = 1'b0;
+                    DRAM_CASn = 1'b1;
+                    DRAM_WEn  = {`AXI_STRB_BITS{1'b0}};
+                    DRAM_A    = ADDR[22:12];
+                    DRAM_D    = `AXI_DATA_BITS'd0;
+                end else begin
+                    DRAM_CSn  = 1'b1;
+                    DRAM_RASn = 1'b1;
+                    DRAM_CASn = 1'b1;
+                    DRAM_WEn  = {`AXI_STRB_BITS{1'b1}};
+                    DRAM_A    = 11'd0;
+                    DRAM_D    = `AXI_DATA_BITS'd0;
+                end
+                end
             default: begin
                 DRAM_CSn  = 1'b1;
                 DRAM_RASn = 1'b1;

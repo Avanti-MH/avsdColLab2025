@@ -3,17 +3,21 @@
 `include "../src/SRAM_wrapper.sv"
 `include "../src/ROM_wrapper.sv"
 `include "../src/DRAM_wrapper.sv"
+`include "../src/DMA_wrapper.sv"
+`include "../src/WDT_wrapper.sv"
 `include "../src/AXI/AXI.sv"
 
 module top(
 
 	input							clk,
 	input							rst,
+	input							clk2,
+	input							rst2,
 
     // ROM Interface
 	output							ROM_enable,
 	output							ROM_read,
-	output	[`AXI_ADDR_BITS-1:0]	ROM_address,
+	output	[11:0]					ROM_address,
     input	[`AXI_DATA_BITS-1:0]	ROM_out,
 
 
@@ -33,8 +37,8 @@ module top(
 	// ============================================================
 	localparam int NUM_M     = 3;
     localparam int NUM_S     = 6;
-    localparam int MIDX_BITS = 2;
-    localparam int SIDX_BITS = 3;
+    localparam int MIDX_BITS = 3;
+    localparam int SIDX_BITS = 2;
 
 	// ============================================================
 	// Interrupt Signals
@@ -490,8 +494,8 @@ module top(
     	.MIDX_BITS  (MIDX_BITS	   ),
     	.SIDX_BITS 	(SIDX_BITS	   )
 	) AXI (
-		.ACLK       (clk           ),
-		.ARESETn    (rst           ),
+		.clk       	(clk           ),
+		.rst    	(rst           ),
 
 		.ARID_M     (ARID_M        ),
 		.ARADDR_M   (ARADDR_M      ),
