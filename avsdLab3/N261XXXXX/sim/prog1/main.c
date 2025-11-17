@@ -140,31 +140,57 @@ void trap_handler(void) {
 // }
 
 // External symbols from data.s and link.ld
-extern int32_t array_size;
-extern int32_t array_addr[];
-extern volatile int32_t _test_start[];
+// extern int32_t array_size;
+// extern int32_t array_addr[];
+// extern volatile int32_t _test_start[];
 
-#define SIM_END_ADDR 0x0000FFFC
-void main() {
-    int32_t n = array_size;
+// #define SIM_END_ADDR 0x0000FFFC
+// void main() {
+//     int32_t n = array_size;
 
-    // Copy array from array_addr to _test_start
-    for (int32_t i = 0; i < n; i++) {
-        _test_start[i] = array_addr[i];
-    }
+//     // Copy array from array_addr to _test_start
+//     for (int32_t i = 0; i < n; i++) {
+//         _test_start[i] = array_addr[i];
+//     }
 
-    // Bubble Sort on _test_start (ascending order, signed)
-    for (int32_t i = 0; i < n; i++) {
-        for (int32_t j = 0; j < n - 1 - i; j++) {
-            if (_test_start[j] > _test_start[j + 1]) {
-                int32_t temp = _test_start[j];
-                _test_start[j] = _test_start[j + 1];
-                _test_start[j + 1] = temp;
-            }
-        }
-    }
+//     // Bubble Sort on _test_start (ascending order, signed)
+//     for (int32_t i = 0; i < n; i++) {
+//         for (int32_t j = 0; j < n - 1 - i; j++) {
+//             if (_test_start[j] > _test_start[j + 1]) {
+//                 int32_t temp = _test_start[j];
+//                 _test_start[j] = _test_start[j + 1];
+//                 _test_start[j + 1] = temp;
+//             }
+//         }
+//     }
 
-    // Signal simulation end
-    volatile int32_t* sim_end = (volatile int32_t*)SIM_END_ADDR;
-    *sim_end = -1;
+//     // Signal simulation end
+//     volatile int32_t* sim_end = (volatile int32_t*)SIM_END_ADDR;
+//     *sim_end = -1;
+// }
+
+int main (void) {
+	extern int array_size;
+	extern short array_addr;
+	extern short _test_start;
+
+	*(&_test_start) = *(&array_addr);
+
+	for (int array_comp = 1; array_comp < array_size; array_comp++) {
+		int insert = 0;
+		for (int test_comp = 0; test_comp < array_comp; test_comp++) {
+			if (*(&array_addr + array_comp) < *(&_test_start + test_comp)) {
+				for (int i = array_comp; i > test_comp; i--) {
+					*(&_test_start + i) = *(&_test_start + i - 1);
+				}
+				*(&_test_start + test_comp) = *(&array_addr + array_comp);
+				insert = 1;
+				break;
+			}
+		}
+		if (insert == 0) *(&_test_start + array_comp) = *(&array_addr + array_comp);
+	}
+ 
+	return 0;
 }
+
