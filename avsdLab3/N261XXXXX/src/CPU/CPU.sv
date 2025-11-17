@@ -634,6 +634,7 @@ module CPU (
     // Load Data Filter
     // ------------------------------------------------------------
     Load_Filter loadFilter (
+        .byteOffset         (WB_aluOut[1:0]      ),
         .memData            (WB_ReadData         ),
         .func3              (WB_func3            ),
 
