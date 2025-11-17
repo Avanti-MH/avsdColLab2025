@@ -6,19 +6,19 @@ module Branch_Predictor#(
     input  logic         rst,
     input  logic         IF_DONE,
     input  logic         MEM_DONE,
-    input  logic [15:0]  IF_PC,
+    input  logic [31:0]  IF_PC,
     output logic         IF_pTaken,
-    output logic [15:0]  IF_pTarget,
+    output logic [31:0]  IF_pTarget,
     input  logic [1:0]   EX_bType,  // 00: others, 01: JAL, 10: Btype
     input  logic         EX_rTaken,
-    input  logic [15:0]  EX_PC,
-    input  logic [15:0]  EX_bTarget
+    input  logic [31:0]  EX_PC,
+    input  logic [31:0]  EX_bTarget
 );
 
     // ============================================================
     // Local Parameters
     // ============================================================
-    localparam int PC_WIDTH        = 16;
+    localparam int PC_WIDTH        = 32;
     localparam int LOW_IGNORED     = 2;
     localparam int GHR_WIDTH       = (PHT_ENTRIES > 1) ? $clog2(PHT_ENTRIES) : 1;
     localparam int BTB_INDEX_WIDTH = (BTB_ENTRIES > 1) ? $clog2(BTB_ENTRIES) : 1;
@@ -35,7 +35,7 @@ module Branch_Predictor#(
     typedef struct packed {
         logic                     valid;
         logic [BTB_TAG_WIDTH-1:0] tag;
-        logic [15:0]              target;
+        logic [31:0]              target;
         logic                     isJAL;
     } btb_entry;
 
@@ -63,9 +63,9 @@ module Branch_Predictor#(
     // BTB Index & Tag
     // ============================================================
     assign EX_BTBIdx  = EX_PC[BTB_INDEX_WIDTH + 1 : 2];
-    assign EX_tag     = EX_PC[15 : BTB_INDEX_WIDTH + 2];
+    assign EX_tag     = EX_PC[31 : BTB_INDEX_WIDTH + 2];
     assign IF_BTBIdx  = IF_PC[BTB_INDEX_WIDTH + 1 : 2];
-    assign IF_tag     = IF_PC[15 : BTB_INDEX_WIDTH + 2];
+    assign IF_tag     = IF_PC[31 : BTB_INDEX_WIDTH + 2];
 
     // ============================================================
     // PHT Index (GHR XOR PC bits)
@@ -100,7 +100,7 @@ module Branch_Predictor#(
             for (i = 0; i < BTB_ENTRIES; i=i+1) begin
             btb_mem[i].valid  <= 1'b0;
             btb_mem[i].tag    <= {BTB_TAG_WIDTH{1'b0}};
-            btb_mem[i].target <= 16'b0;
+            btb_mem[i].target <= 32'b0;
             btb_mem[i].isJAL  <= 1'b0;
             end
             for (i = 0; i < PHT_ENTRIES; i=i+1)

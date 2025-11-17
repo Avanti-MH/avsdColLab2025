@@ -8,7 +8,7 @@ module Program_Counter (
     input  logic        flush,
     input  logic        pTaken,
 
-    input  logic [15:0] pTarget,
+    input  logic [31:0] pTarget,
     input  logic [31:0] fTarget,
     output logic [31:0] pc
 );
@@ -21,7 +21,7 @@ module Program_Counter (
     else if (IF_DONE && MEM_DONE) begin
         if      (flush)  pc <= fTarget;
         else if (stall)  pc <= pc;
-        else if (pTaken) pc <= {16'd0, pTarget};
+        else if (pTaken) pc <= {pTarget};
         else             pc <= pc + 32'd4;
     end
 end

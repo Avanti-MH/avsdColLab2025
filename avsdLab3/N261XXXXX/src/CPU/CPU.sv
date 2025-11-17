@@ -50,7 +50,7 @@ module CPU (
     // -------------------------------------
     logic [31:0]    IF_pc;
     logic           IF_pTaken;
-    logic [15:0]    IF_pTarget;
+    logic [31:0]    IF_pTarget;
 
     // -------------------------------------
     // ID Stage
@@ -179,11 +179,11 @@ module CPU (
         .IF_DONE            (IF_DONE            ),
         .MEM_DONE           (MEM_DONE           ),
 
-        .IF_PC              (IF_pc[15:0]        ),
-        .EX_PC              (EX_pc[15:0]        ),
+        .IF_PC              (IF_pc              ),
+        .EX_PC              (EX_pc              ),
         .EX_bType           (EX_bType           ),
         .EX_rTaken          (EX_rTaken          ),
-        .EX_bTarget         (EX_bTarget[15:0]   ),
+        .EX_bTarget         (EX_bTarget         ),
 
         .IF_pTaken          (IF_pTaken          ),
         .IF_pTarget         (IF_pTarget         )
