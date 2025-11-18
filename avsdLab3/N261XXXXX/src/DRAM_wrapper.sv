@@ -263,7 +263,7 @@ module DRAM_wrapper (
                     else                             DLY_cnt <= DLY_cnt + 3'd1;
                 end
                 RowHit: begin
-                    if(ARVALID_S | AWVALID_S)        DLY_cnt <= DLY_cnt + 3'd1;
+                    if(ARVALID_S)                    DLY_cnt <= DLY_cnt + 3'd1;
                 end
                 PreCharge: begin
                     if (DLY_cnt == 3'd4)             DLY_cnt <= 3'd0;
@@ -323,10 +323,10 @@ module DRAM_wrapper (
                 if ((ARVALID_S || AWVALID_S) && HitRow) begin
                     DRAM_CSn  = 1'b0;
                     DRAM_RASn = 1'b1;
-                    DRAM_CASn = 1'b0;
-                    DRAM_WEn  = ARVALID_S ? {`AXI_STRB_BITS{1'b1}} : {`AXI_STRB_BITS{1'b0}};
-                    DRAM_A    = ARVALID_S ? ARADDR_S[11:2] : AWADDR_S[11:2];
-                    DRAM_D    = ARVALID_S ? `AXI_DATA_BITS'd0 : WDATA_S;
+                    DRAM_CASn = ~ARVALID_S;
+                    DRAM_WEn  = {`AXI_STRB_BITS{1'b1}};
+                    DRAM_A    = ARVALID_S ? {1'b0, ARADDR_S[11:2]} : 11'd0;
+                    DRAM_D    = `AXI_DATA_BITS'd0;
                 end else if ((ARVALID_S || AWVALID_S) && ~HitRow) begin
                     DRAM_CSn  = 1'b0;
                     DRAM_RASn = 1'b0;
