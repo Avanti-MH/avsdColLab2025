@@ -6,6 +6,9 @@ module Branch_Predictor#(
     input  logic         rst,
     input  logic         IF_DONE,
     input  logic         MEM_DONE,
+    input  logic         DMA_interrupt,
+    input  logic         WTO_interrupt,
+
     input  logic [31:0]  IF_PC,
     output logic         IF_pTaken,
     output logic [31:0]  IF_pTarget,
@@ -98,10 +101,20 @@ module Branch_Predictor#(
         if (rst) begin
             ghr <= {GHR_WIDTH{1'b0}};
             for (i = 0; i < BTB_ENTRIES; i=i+1) begin
-            btb_mem[i].valid  <= 1'b0;
-            btb_mem[i].tag    <= {BTB_TAG_WIDTH{1'b0}};
-            btb_mem[i].target <= 32'b0;
-            btb_mem[i].isJAL  <= 1'b0;
+                btb_mem[i].valid  <= 1'b0;
+                btb_mem[i].tag    <= {BTB_TAG_WIDTH{1'b0}};
+                btb_mem[i].target <= 32'b0;
+                btb_mem[i].isJAL  <= 1'b0;
+            end
+            for (i = 0; i < PHT_ENTRIES; i=i+1)
+                pht_mem[i] <= wTaken;
+        end else if (DMA_interrupt ||WTO_interrupt) begin
+            ghr <= {GHR_WIDTH{1'b0}};
+            for (i = 0; i < BTB_ENTRIES; i=i+1) begin
+                btb_mem[i].valid  <= 1'b0;
+                btb_mem[i].tag    <= {BTB_TAG_WIDTH{1'b0}};
+                btb_mem[i].target <= 32'b0;
+                btb_mem[i].isJAL  <= 1'b0;
             end
             for (i = 0; i < PHT_ENTRIES; i=i+1)
                 pht_mem[i] <= wTaken;

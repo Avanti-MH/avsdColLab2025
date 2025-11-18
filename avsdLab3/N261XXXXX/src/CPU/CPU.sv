@@ -178,6 +178,8 @@ module CPU (
         .rst                (rst                ),
         .IF_DONE            (IF_DONE            ),
         .MEM_DONE           (MEM_DONE           ),
+        .DMA_interrupt      (DMA_interrupt      ),
+	    .WTO_interrupt      (WTO_interrupt      ),
 
         .IF_PC              (IF_pc              ),
         .EX_PC              (EX_pc              ),

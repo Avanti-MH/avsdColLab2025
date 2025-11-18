@@ -67,8 +67,13 @@ module DMA (
                 end else begin
                     BURST_SRC <= BURST_SRC;
                     BURST_DST <= BURST_DST;
-                    BURST_LEN <= `AXI_LEN_BITS'd15;
-                    DMALEN    <= DMALEN - `AXI_DATA_BITS'd16;
+                    if (BURST_SRC[5:0] != 6'd0) begin
+                        BURST_LEN <= {{`AXI_LEN_BITS{1'b0}}, (32'd64 - {26'd0, BURST_SRC[5:0]}) >> 2}[`AXI_LEN_BITS-1:0];
+                        DMALEN    <= DMALEN - ((32'd64 - {26'd0, BURST_SRC[5:0]}) >> 2);
+                    end else begin
+                        BURST_LEN <= `AXI_LEN_BITS'd15;
+                        DMALEN    <= DMALEN - `AXI_DATA_BITS'd16;
+                    end
                 end
             end
             if (BURST_DONE) begin
@@ -83,16 +88,16 @@ module DMA (
                 // 2. The Last Burst : Burst Length might less than 16
                 // ---------------------------------------
                 end else if (DMALEN < 32'd16) begin
-                    BURST_SRC <= BURST_SRC + 32'd64;
-                    BURST_DST <= BURST_DST + 32'd64;
+                    BURST_SRC <= {BURST_SRC[31:6], 6'd0} + 32'd64;
+                    BURST_DST <= {BURST_DST[31:6], 6'd0} + 32'd64;
                     BURST_LEN <= DMALEN[3:0] - `AXI_LEN_BITS'd1;
                     DMALEN    <= 32'd0;
                 // ---------------------------------------
                 // 3. Normal Burst : Burst Length = 16
                 // ---------------------------------------
                 end else begin
-                    BURST_SRC <= BURST_SRC + 32'd64;
-                    BURST_DST <= BURST_DST + 32'd64;
+                    BURST_SRC <= {BURST_SRC[31:6], 6'd0} + 32'd64;
+                    BURST_DST <= {BURST_DST[31:6], 6'd0} + 32'd64;
                     BURST_LEN <= `AXI_LEN_BITS'd15;
                     DMALEN    <= DMALEN - `AXI_DATA_BITS'd16;
                 end
