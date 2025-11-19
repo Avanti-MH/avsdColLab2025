@@ -68,7 +68,8 @@ module DMA (
                     BURST_SRC <= BURST_SRC;
                     BURST_DST <= BURST_DST;
                     if (BURST_SRC[5:0] != 6'd0) begin
-                        BURST_LEN <= {{`AXI_LEN_BITS{1'b0}}, (32'd64 - {26'd0, BURST_SRC[5:0]}) >> 2}[`AXI_LEN_BITS-1:0];
+                        //BURST_LEN <= {{`AXI_LEN_BITS{1'b0}}, (32'd64 - {26'd0, BURST_SRC[5:0]}) >> 2}[`AXI_LEN_BITS-1:0];
+                        BURST_LEN <= (4'd15 - BURST_SRC[5:2] + 4'd1);
                         DMALEN    <= DMALEN - ((32'd64 - {26'd0, BURST_SRC[5:0]}) >> 2);
                     end else begin
                         BURST_LEN <= `AXI_LEN_BITS'd15;
