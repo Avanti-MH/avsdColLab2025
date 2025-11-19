@@ -1,0 +1,341 @@
+Warning: The trip points for the library named SRAM_ss0p72v0p72vm40c_100a differ from those in the library named N16ADFP_StdCellss0p72vm40c. (TIM-164)
+Information: Updating design information... (UID-85)
+Warning: Design 'top' contains 3 high-fanout nets. A fanout number of 1000 will be used for delay calculations involving these nets. (TIM-134)
+ 
+****************************************
+Report : timing
+        -path full
+        -delay max
+        -max_paths 1
+        -sort_by group
+Design : top
+Version: P-2019.03-SP1-1
+Date   : Wed Nov 19 11:00:49 2025
+****************************************
+
+ # A fanout number of 1000 was used for high fanout net computations.
+
+Operating Conditions: ss0p72vm40c   Library: N16ADFP_StdCellss0p72vm40c
+Wire Load Model Mode: segmented
+
+  Startpoint: CPU_wrapper/CPU/CSR_File/cycle_reg_0_
+              (rising edge-triggered flip-flop clocked by clk)
+  Endpoint: CPU_wrapper/CPU/CSR_File/cycle_reg_63_
+            (rising edge-triggered flip-flop clocked by clk)
+  Path Group: clk
+  Path Type: max
+
+  Des/Clust/Port     Wire Load Model       Library
+  ------------------------------------------------
+  SRAM_wrapper_0     ZeroWireload          N16ADFP_StdCellss0p72vm40c
+  MEMWB              ZeroWireload          N16ADFP_StdCellss0p72vm40c
+  EXMEM              ZeroWireload          N16ADFP_StdCellss0p72vm40c
+  CSR_File           ZeroWireload          N16ADFP_StdCellss0p72vm40c
+  IDEX               ZeroWireload          N16ADFP_StdCellss0p72vm40c
+  Register_File      ZeroWireload          N16ADFP_StdCellss0p72vm40c
+  IFID               ZeroWireload          N16ADFP_StdCellss0p72vm40c
+  Program_Counter    ZeroWireload          N16ADFP_StdCellss0p72vm40c
+  Branch_Predictor   ZeroWireload          N16ADFP_StdCellss0p72vm40c
+  Arbiter            ZeroWireload          N16ADFP_StdCellss0p72vm40c
+  DefaultSlave       ZeroWireload          N16ADFP_StdCellss0p72vm40c
+  WDT                ZeroWireload          N16ADFP_StdCellss0p72vm40c
+  ASYN_FIFO          ZeroWireload          N16ADFP_StdCellss0p72vm40c
+  DMA                ZeroWireload          N16ADFP_StdCellss0p72vm40c
+  CPU                ZeroWireload          N16ADFP_StdCellss0p72vm40c
+  AXI                ZeroWireload          N16ADFP_StdCellss0p72vm40c
+  DRAM_wrapper       ZeroWireload          N16ADFP_StdCellss0p72vm40c
+  WDT_wrapper        ZeroWireload          N16ADFP_StdCellss0p72vm40c
+  DMA_wrapper        ZeroWireload          N16ADFP_StdCellss0p72vm40c
+  SRAM_wrapper_1     ZeroWireload          N16ADFP_StdCellss0p72vm40c
+  ROM_wrapper        ZeroWireload          N16ADFP_StdCellss0p72vm40c
+  top                ZeroWireload          N16ADFP_StdCellss0p72vm40c
+  CPU_wrapper        ZeroWireload          N16ADFP_StdCellss0p72vm40c
+  CSR_File_DW01_inc_1
+                     ZeroWireload          N16ADFP_StdCellss0p72vm40c
+
+  Point                                                   Incr       Path
+  --------------------------------------------------------------------------
+  clock clk (rise edge)                                 0.0000     0.0000
+  clock network delay (ideal)                           0.2000     0.2000
+  CPU_wrapper/CPU/CSR_File/cycle_reg_0_/CP (DFCNQD2BWP16P90LVT)
+                                                        0.0000 #   0.2000 r
+  CPU_wrapper/CPU/CSR_File/cycle_reg_0_/Q (DFCNQD2BWP16P90LVT)
+                                                        0.0598     0.2598 r
+  CPU_wrapper/CPU/CSR_File/add_110/A[0] (CSR_File_DW01_inc_1)
+                                                        0.0000     0.2598 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_1/CO (HA1D4BWP16P90LVT)
+                                                        0.0168     0.2766 r
+  CPU_wrapper/CPU/CSR_File/add_110/U3/ZN (CKND2D4BWP16P90LVT)
+                                                        0.0058     0.2824 f
+  CPU_wrapper/CPU/CSR_File/add_110/U6/ZN (CKND2BWP16P90LVT)
+                                                        0.0048     0.2873 r
+  CPU_wrapper/CPU/CSR_File/add_110/U55/ZN (IND2D2BWP16P90LVT)
+                                                        0.0052     0.2925 f
+  CPU_wrapper/CPU/CSR_File/add_110/U2/ZN (CKND2BWP16P90LVT)
+                                                        0.0062     0.2987 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_4/CO (HA1D4BWP16P90LVT)
+                                                        0.0154     0.3141 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_5/CO (HA1D4BWP16P90LVT)
+                                                        0.0158     0.3299 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_6/CO (HA1D4BWP16P90LVT)
+                                                        0.0158     0.3457 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_7/CO (HA1D4BWP16P90LVT)
+                                                        0.0158     0.3615 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_8/CO (HA1D4BWP16P90LVT)
+                                                        0.0158     0.3773 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_9/CO (HA1D4BWP16P90LVT)
+                                                        0.0159     0.3932 r
+  CPU_wrapper/CPU/CSR_File/add_110/U51/ZN (CKND2D4BWP16P90LVT)
+                                                        0.0068     0.4000 f
+  CPU_wrapper/CPU/CSR_File/add_110/U48/ZN (INVD4BWP16P90LVT)
+                                                        0.0047     0.4047 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_11/CO (HA1D4BWP16P90LVT)
+                                                        0.0154     0.4201 r
+  CPU_wrapper/CPU/CSR_File/add_110/U4/ZN (CKND2D4BWP16P90LVT)
+                                                        0.0058     0.4259 f
+  CPU_wrapper/CPU/CSR_File/add_110/U53/ZN (CKND2BWP16P90LVT)
+                                                        0.0057     0.4316 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_13/CO (HA1D4BWP16P90LVT)
+                                                        0.0157     0.4473 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_14/CO (HA1D4BWP16P90LVT)
+                                                        0.0158     0.4631 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_15/CO (HA1D4BWP16P90LVT)
+                                                        0.0151     0.4783 r
+  CPU_wrapper/CPU/CSR_File/add_110/U17/ZN (IND2D2BWP16P90LVT)
+                                                        0.0054     0.4837 f
+  CPU_wrapper/CPU/CSR_File/add_110/U13/ZN (CKND2BWP16P90LVT)
+                                                        0.0062     0.4899 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_17/CO (HA1D4BWP16P90LVT)
+                                                        0.0154     0.5053 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_18/CO (HA1D4BWP16P90LVT)
+                                                        0.0158     0.5211 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_19/CO (HA1D4BWP16P90LVT)
+                                                        0.0158     0.5369 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_20/CO (HA1D4BWP16P90LVT)
+                                                        0.0158     0.5527 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_21/CO (HA1D4BWP16P90LVT)
+                                                        0.0158     0.5685 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_22/CO (HA1D4BWP16P90LVT)
+                                                        0.0158     0.5843 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_23/CO (HA1D4BWP16P90LVT)
+                                                        0.0159     0.6002 r
+  CPU_wrapper/CPU/CSR_File/add_110/U25/ZN (CKND2D4BWP16P90LVT)
+                                                        0.0058     0.6061 f
+  CPU_wrapper/CPU/CSR_File/add_110/U50/ZN (CKND2BWP16P90LVT)
+                                                        0.0057     0.6117 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_25/CO (HA1D4BWP16P90LVT)
+                                                        0.0157     0.6274 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_26/CO (HA1D4BWP16P90LVT)
+                                                        0.0151     0.6425 r
+  CPU_wrapper/CPU/CSR_File/add_110/U16/ZN (IND2D2BWP16P90LVT)
+                                                        0.0054     0.6479 f
+  CPU_wrapper/CPU/CSR_File/add_110/U11/ZN (CKND2BWP16P90LVT)
+                                                        0.0062     0.6541 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_28/CO (HA1D4BWP16P90LVT)
+                                                        0.0154     0.6695 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_29/CO (HA1D4BWP16P90LVT)
+                                                        0.0158     0.6853 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_30/CO (HA1D4BWP16P90LVT)
+                                                        0.0158     0.7012 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_31/CO (HA1D4BWP16P90LVT)
+                                                        0.0158     0.7170 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_32/CO (HA1D4BWP16P90LVT)
+                                                        0.0158     0.7328 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_33/CO (HA1D4BWP16P90LVT)
+                                                        0.0158     0.7486 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_34/CO (HA1D4BWP16P90LVT)
+                                                        0.0159     0.7645 r
+  CPU_wrapper/CPU/CSR_File/add_110/U54/ZN (CKND2D4BWP16P90LVT)
+                                                        0.0068     0.7713 f
+  CPU_wrapper/CPU/CSR_File/add_110/U49/ZN (INVD4BWP16P90LVT)
+                                                        0.0047     0.7760 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_36/CO (HA1D4BWP16P90LVT)
+                                                        0.0154     0.7914 r
+  CPU_wrapper/CPU/CSR_File/add_110/U52/ZN (CKND2D4BWP16P90LVT)
+                                                        0.0068     0.7982 f
+  CPU_wrapper/CPU/CSR_File/add_110/U47/ZN (INVD4BWP16P90LVT)
+                                                        0.0047     0.8029 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_38/CO (HA1D4BWP16P90LVT)
+                                                        0.0153     0.8182 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_39/CO (HA1D4BWP16P90LVT)
+                                                        0.0151     0.8333 r
+  CPU_wrapper/CPU/CSR_File/add_110/U15/ZN (IND2D2BWP16P90LVT)
+                                                        0.0054     0.8387 f
+  CPU_wrapper/CPU/CSR_File/add_110/U9/ZN (CKND2BWP16P90LVT)
+                                                        0.0062     0.8449 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_41/CO (HA1D4BWP16P90LVT)
+                                                        0.0154     0.8603 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_42/CO (HA1D4BWP16P90LVT)
+                                                        0.0158     0.8761 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_43/CO (HA1D4BWP16P90LVT)
+                                                        0.0160     0.8921 r
+  CPU_wrapper/CPU/CSR_File/add_110/U27/ZN (IND2D4BWP16P90LVT)
+                                                        0.0060     0.8980 f
+  CPU_wrapper/CPU/CSR_File/add_110/U56/ZN (INVD4BWP16P90LVT)
+                                                        0.0049     0.9029 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_45/CO (HA1D4BWP16P90LVT)
+                                                        0.0148     0.9177 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_46/CO (HA1D4BWP16P90LVT)
+                                                        0.0158     0.9335 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_47/CO (HA1D4BWP16P90LVT)
+                                                        0.0158     0.9493 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_48/CO (HA1D4BWP16P90LVT)
+                                                        0.0158     0.9651 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_49/CO (HA1D4BWP16P90LVT)
+                                                        0.0157     0.9808 r
+  CPU_wrapper/CPU/CSR_File/add_110/U20/Z (AN2D1BWP16P90LVT)
+                                                        0.0128     0.9936 r
+  CPU_wrapper/CPU/CSR_File/add_110/U18/ZN (IND2D2BWP16P90LVT)
+                                                        0.0056     0.9992 f
+  CPU_wrapper/CPU/CSR_File/add_110/U19/ZN (CKND2BWP16P90LVT)
+                                                        0.0058     1.0050 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_52/CO (HA1D4BWP16P90LVT)
+                                                        0.0157     1.0207 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_53/CO (HA1D4BWP16P90LVT)
+                                                        0.0158     1.0365 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_54/CO (HA1D4BWP16P90LVT)
+                                                        0.0158     1.0524 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_55/CO (HA1D4BWP16P90LVT)
+                                                        0.0158     1.0682 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_56/CO (HA1D4BWP16P90LVT)
+                                                        0.0151     1.0833 r
+  CPU_wrapper/CPU/CSR_File/add_110/U32/ZN (IND2D2BWP16P90LVT)
+                                                        0.0054     1.0887 f
+  CPU_wrapper/CPU/CSR_File/add_110/U31/ZN (CKND2BWP16P90LVT)
+                                                        0.0058     1.0945 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_58/CO (HA1D4BWP16P90LVT)
+                                                        0.0158     1.1103 r
+  CPU_wrapper/CPU/CSR_File/add_110/U26/ZN (CKND2D4BWP16P90LVT)
+                                                        0.0058     1.1162 f
+  CPU_wrapper/CPU/CSR_File/add_110/U33/ZN (CKND2BWP16P90LVT)
+                                                        0.0057     1.1218 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_60/CO (HA1D4BWP16P90LVT)
+                                                        0.0158     1.1376 r
+  CPU_wrapper/CPU/CSR_File/add_110/U24/ZN (CKND2D4BWP16P90LVT)
+                                                        0.0058     1.1434 f
+  CPU_wrapper/CPU/CSR_File/add_110/U29/ZN (CKND2BWP16P90LVT)
+                                                        0.0049     1.1483 r
+  CPU_wrapper/CPU/CSR_File/add_110/U1_1_62/CO (HA1D2BWP16P90LVT)
+                                                        0.0161     1.1644 r
+  CPU_wrapper/CPU/CSR_File/add_110/U36/ZN (ND2D1BWP16P90LVT)
+                                                        0.0059     1.1703 f
+  CPU_wrapper/CPU/CSR_File/add_110/U34/ZN (ND2D1BWP16P90LVT)
+                                                        0.0054     1.1757 r
+  CPU_wrapper/CPU/CSR_File/add_110/SUM[63] (CSR_File_DW01_inc_1)
+                                                        0.0000     1.1757 r
+  CPU_wrapper/CPU/CSR_File/cycle_reg_63_/D (DFCNQD2BWP16P90LVT)
+                                                        0.0000     1.1757 r
+  data arrival time                                                1.1757
+
+  clock clk (rise edge)                                 1.0000     1.0000
+  clock network delay (ideal)                           0.2000     1.2000
+  clock uncertainty                                    -0.0200     1.1800
+  CPU_wrapper/CPU/CSR_File/cycle_reg_63_/CP (DFCNQD2BWP16P90LVT)
+                                                        0.0000     1.1800 r
+  library setup time                                   -0.0042     1.1758
+  data required time                                               1.1758
+  --------------------------------------------------------------------------
+  data required time                                               1.1758
+  data arrival time                                               -1.1757
+  --------------------------------------------------------------------------
+  slack (MET)                                                      0.0000
+
+
+  Startpoint: WDT_wrapper/wdt/watchdog_counter_reg_0_
+              (rising edge-triggered flip-flop clocked by clk2)
+  Endpoint: WDT_wrapper/wdt/watchdog_counter_reg_31_
+            (rising edge-triggered flip-flop clocked by clk2)
+  Path Group: clk2
+  Path Type: max
+
+  Des/Clust/Port     Wire Load Model       Library
+  ------------------------------------------------
+  WDT                ZeroWireload          N16ADFP_StdCellss0p72vm40c
+  ASYN_FIFO          ZeroWireload          N16ADFP_StdCellss0p72vm40c
+  top                ZeroWireload          N16ADFP_StdCellss0p72vm40c
+  WDT_wrapper        ZeroWireload          N16ADFP_StdCellss0p72vm40c
+  WDT_DW_cmp_0       ZeroWireload          N16ADFP_StdCellss0p72vm40c
+  WDT_DW01_inc_0     ZeroWireload          N16ADFP_StdCellss0p72vm40c
+
+  Point                                                   Incr       Path
+  --------------------------------------------------------------------------
+  clock clk2 (rise edge)                                0.0000     0.0000
+  clock network delay (ideal)                           0.2000     0.2000
+  WDT_wrapper/wdt/watchdog_counter_reg_0_/CP (DFCNQD2BWP16P90LVT)
+                                                        0.0000     0.2000 r
+  WDT_wrapper/wdt/watchdog_counter_reg_0_/Q (DFCNQD2BWP16P90LVT)
+                                                        0.0597     0.2597 r
+  WDT_wrapper/wdt/add_68/A[0] (WDT_DW01_inc_0)          0.0000     0.2597 r
+  WDT_wrapper/wdt/add_68/U1_1_1/CO (HA1D1BWP16P90LVT)   0.0171     0.2768 r
+  WDT_wrapper/wdt/add_68/U1_1_2/CO (HA1D1BWP16P90LVT)   0.0170     0.2938 r
+  WDT_wrapper/wdt/add_68/U1_1_3/CO (HA1D1BWP16P90LVT)   0.0170     0.3108 r
+  WDT_wrapper/wdt/add_68/U1_1_4/CO (HA1D1BWP16P90LVT)   0.0170     0.3277 r
+  WDT_wrapper/wdt/add_68/U1_1_5/CO (HA1D1BWP16P90LVT)   0.0170     0.3447 r
+  WDT_wrapper/wdt/add_68/U1_1_6/CO (HA1D1BWP16P90LVT)   0.0170     0.3617 r
+  WDT_wrapper/wdt/add_68/U1_1_7/CO (HA1D1BWP16P90LVT)   0.0170     0.3786 r
+  WDT_wrapper/wdt/add_68/U1_1_8/CO (HA1D1BWP16P90LVT)   0.0170     0.3956 r
+  WDT_wrapper/wdt/add_68/U1_1_9/CO (HA1D1BWP16P90LVT)   0.0170     0.4126 r
+  WDT_wrapper/wdt/add_68/U1_1_10/CO (HA1D1BWP16P90LVT)
+                                                        0.0170     0.4295 r
+  WDT_wrapper/wdt/add_68/U1_1_11/CO (HA1D1BWP16P90LVT)
+                                                        0.0170     0.4465 r
+  WDT_wrapper/wdt/add_68/U1_1_12/CO (HA1D1BWP16P90LVT)
+                                                        0.0170     0.4635 r
+  WDT_wrapper/wdt/add_68/U1_1_13/CO (HA1D1BWP16P90LVT)
+                                                        0.0170     0.4805 r
+  WDT_wrapper/wdt/add_68/U1_1_14/CO (HA1D1BWP16P90LVT)
+                                                        0.0170     0.4974 r
+  WDT_wrapper/wdt/add_68/U1_1_15/CO (HA1D1BWP16P90LVT)
+                                                        0.0170     0.5144 r
+  WDT_wrapper/wdt/add_68/U1_1_16/CO (HA1D1BWP16P90LVT)
+                                                        0.0170     0.5314 r
+  WDT_wrapper/wdt/add_68/U1_1_17/CO (HA1D1BWP16P90LVT)
+                                                        0.0170     0.5483 r
+  WDT_wrapper/wdt/add_68/U1_1_18/CO (HA1D1BWP16P90LVT)
+                                                        0.0170     0.5653 r
+  WDT_wrapper/wdt/add_68/U1_1_19/CO (HA1D1BWP16P90LVT)
+                                                        0.0170     0.5823 r
+  WDT_wrapper/wdt/add_68/U1_1_20/CO (HA1D1BWP16P90LVT)
+                                                        0.0170     0.5992 r
+  WDT_wrapper/wdt/add_68/U1_1_21/CO (HA1D1BWP16P90LVT)
+                                                        0.0170     0.6162 r
+  WDT_wrapper/wdt/add_68/U1_1_22/CO (HA1D1BWP16P90LVT)
+                                                        0.0170     0.6332 r
+  WDT_wrapper/wdt/add_68/U1_1_23/CO (HA1D1BWP16P90LVT)
+                                                        0.0170     0.6501 r
+  WDT_wrapper/wdt/add_68/U1_1_24/CO (HA1D1BWP16P90LVT)
+                                                        0.0170     0.6671 r
+  WDT_wrapper/wdt/add_68/U1_1_25/CO (HA1D1BWP16P90LVT)
+                                                        0.0170     0.6841 r
+  WDT_wrapper/wdt/add_68/U1_1_26/CO (HA1D1BWP16P90LVT)
+                                                        0.0170     0.7010 r
+  WDT_wrapper/wdt/add_68/U1_1_27/CO (HA1D1BWP16P90LVT)
+                                                        0.0170     0.7180 r
+  WDT_wrapper/wdt/add_68/U1_1_28/CO (HA1D1BWP16P90LVT)
+                                                        0.0170     0.7350 r
+  WDT_wrapper/wdt/add_68/U1_1_29/CO (HA1D1BWP16P90LVT)
+                                                        0.0170     0.7520 r
+  WDT_wrapper/wdt/add_68/U1_1_30/CO (HA1D1BWP16P90LVT)
+                                                        0.0154     0.7673 r
+  WDT_wrapper/wdt/add_68/U1/Z (XOR2D1BWP16P90)          0.0191     0.7864 r
+  WDT_wrapper/wdt/add_68/SUM[31] (WDT_DW01_inc_0)       0.0000     0.7864 r
+  WDT_wrapper/wdt/U76/Z (AO22D1BWP16P90LVT)             0.0157     0.8022 r
+  WDT_wrapper/wdt/watchdog_counter_reg_31_/D (DFCNQD2BWP16P90LVT)
+                                                        0.0000     0.8022 r
+  data arrival time                                                0.8022
+
+  clock clk2 (rise edge)                               10.0000    10.0000
+  clock network delay (ideal)                           0.2000    10.2000
+  clock uncertainty                                    -0.0200    10.1800
+  WDT_wrapper/wdt/watchdog_counter_reg_31_/CP (DFCNQD2BWP16P90LVT)
+                                                        0.0000    10.1800 r
+  library setup time                                   -0.0044    10.1756
+  data required time                                              10.1756
+  --------------------------------------------------------------------------
+  data required time                                              10.1756
+  data arrival time                                               -0.8022
+  --------------------------------------------------------------------------
+  slack (MET)                                                      9.3734
+
+
+1
