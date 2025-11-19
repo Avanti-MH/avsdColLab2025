@@ -7,7 +7,7 @@ Report : timing
         -sort_by group
 Design : top
 Version: P-2019.03-SP1-1
-Date   : Wed Nov 19 11:00:49 2025
+Date   : Wed Nov 19 12:14:38 2025
 ****************************************
 
  # A fanout number of 1000 was used for high fanout net computations.
@@ -54,7 +54,7 @@ Wire Load Model Mode: segmented
   DM1/ADDR_reg_3_/CP (DFCNQD2BWP16P90LVT)               0.0000 #   0.2000 r
   DM1/ADDR_reg_3_/Q (DFCNQD2BWP16P90LVT)                0.0616     0.2616 r
   DM1/add_211_2/U1_1/S (FA1D1BWP16P90LVT)               0.0218     0.2834 r
-  DM1/U97/ZN (AOI22D1BWP16P90LVT)                       0.0128     0.2962 f
+  DM1/U96/ZN (AOI22D1BWP16P90LVT)                       0.0128     0.2962 f
   DM1/U26/ZN (IOA21D4BWP20P90)                          0.0080     0.3042 r
   DM1/U25/Z (DEL025D1BWP20P90)                          0.0381     0.3424 r
   DM1/i_SRAM/A[1] (TS1N16ADFPCLLLVTA512X45M4SWSHOD)     0.0000     0.3424 r
