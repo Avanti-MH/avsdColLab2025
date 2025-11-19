@@ -1,233 +1,274 @@
+`include "./WDT/WDT.sv"
 `include "../include/AXI_define.svh"
-`include "../src/WDT/WDT.sv"
-`include "../src/WDT/ASYN_FIFO.sv"
+`include "./CDC_lib/ASYN_FIFO.sv"
+//`include "../CDC_lib/asyn_fifo_32bit.sv"
 
 module WDT_wrapper (
+    // Clock and Reset Signals
+    input wire clk,
+    input wire clk2,
+    input wire rst,
+    input wire rst2,
+    
+    // AXI Write Address Channel
+    input wire [`AXI_IDS_BITS-1:0]   AWID,
+    input wire [`AXI_ADDR_BITS-1:0]  AWADDR,
+    input wire [`AXI_LEN_BITS-1:0]   AWLEN,
+    input wire [`AXI_SIZE_BITS-1:0]  AWSIZE,
+    input wire [1:0]                 AWBURST,
+    input wire                       AWVALID,
+    output logic                     AWREADY,
 
-    input  logic                            clk,
-    input  logic                            rst,
-    input  logic                            clk2,
-    input  logic                            rst2,
+    // AXI Write Data Channel
+    input wire [`AXI_DATA_BITS-1:0]  WDATA,
+    input wire [`AXI_STRB_BITS-1:0]  WSTRB,
+    input wire                       WLAST,
+    input wire                       WVALID,
+    output logic                     WREADY,
 
-    // ReadAddress
-    input  logic [`AXI_IDS_BITS-1:0]        ARID_S,
-    input  logic [`AXI_ADDR_BITS-1:0]       ARADDR_S,
-    input  logic [`AXI_LEN_BITS-1:0]        ARLEN_S,
-    input  logic [`AXI_SIZE_BITS-1:0]       ARSIZE_S,
-    input  logic [1:0]                      ARBURST_S,
-    input  logic                            ARVALID_S,
-    output logic                            ARREADY_S,
+    // AXI Read Address Channel
+    input wire [`AXI_IDS_BITS-1:0]   ARID,
+    input wire [`AXI_ADDR_BITS-1:0]  ARADDR,
+    input wire [`AXI_LEN_BITS-1:0]   ARLEN,
+    input wire [`AXI_SIZE_BITS-1:0]  ARSIZE,
+    input wire [1:0]                 ARBURST,
+    input wire                       ARVALID,
+    output logic                     ARREADY,
 
-    // ReadData
-    output logic [`AXI_IDS_BITS-1:0]        RID_S,
-    output logic [`AXI_DATA_BITS-1:0]       RDATA_S,
-    output logic [1:0]                      RRESP_S,
-    output logic                            RLAST_S,
-    output logic                            RVALID_S,
-    input  logic                            RREADY_S,
+    // AXI Read Data Channel
+    output logic [`AXI_IDS_BITS-1:0] RID,
+    output logic [`AXI_DATA_BITS-1:0] RDATA,
+    output logic [1:0]               RRESP,
+    output logic                     RLAST,
+    output logic                     RVALID,
+    input wire                       RREADY,
 
-    // WriteAddress
-    input  logic [`AXI_IDS_BITS-1:0]        AWID_S,
-    input  logic [`AXI_ADDR_BITS-1:0]       AWADDR_S,
-    input  logic [`AXI_LEN_BITS-1:0]        AWLEN_S,
-    input  logic [`AXI_SIZE_BITS-1:0]       AWSIZE_S,
-    input  logic [1:0]                      AWBURST_S,
-    input  logic                            AWVALID_S,
-    output logic                            AWREADY_S,
+    // AXI Write Response Channel
+    output logic [`AXI_IDS_BITS-1:0] BID,
+    output logic [1:0]               BRESP,
+    output logic                     BVALID,
+    input wire                       BREADY,
 
-    // WriteData
-    input  logic [`AXI_DATA_BITS-1:0]       WDATA_S,
-    input  logic [`AXI_STRB_BITS-1:0]       WSTRB_S,
-    input  logic                            WLAST_S,
-    input  logic                            WVALID_S,
-    output logic                            WREADY_S,
-
-    // WriteResponse
-    output logic [`AXI_IDS_BITS-1:0]        BID_S,
-    output logic [1:0]                      BRESP_S,
-    output logic                            BVALID_S,
-    input  logic                            BREADY_S,
-
-    // Interrupt
-    output logic                            WTO_interrupt
+    // Interrupt Signal
+    output logic WTO_interrupt
 );
 
-    // ============================================================
-    // State Definition
-    // ============================================================
-    typedef enum logic [1:0] {
-        ACCEPT        = 2'd0,
-        ReadData      = 2'd1,
-        WriteData     = 2'd2,
-        WriteResponse = 2'd3
-    } state_t;
+    // State Machine Parameters
+    localparam IDLE       = 2'd0;
+    localparam RDATA_STATE = 2'd1;
+    localparam WDATA_STATE = 2'd2;
+    localparam B_STATE     = 2'd3;
 
-    state_t                     CurrentState, NextState;
+    // Address Range Parameters
+    localparam ADDR_BEGIN = 32'h1001_0000;
+    localparam ADDR_END   = 32'h1001_03ff;
 
-    // ============================================================
-    // Registers Address Mapping
-    // ============================================================
-    localparam logic [31:0] ADDR_LIST [0:2] = '{32'h0000_0100,
-                                                32'h0000_0200,
-                                                32'h0000_0300};
+    // Internal Signals for Asynchronous FIFO
+    logic wpush, wfull;
+    logic [36:0] FIFO_in, FIFO_out;
+    logic rempty;
 
-    // ============================================================
-    // Watchdog Timer Registers
-    // ============================================================
-    logic [2:0]                wpush, wfull, fifo_empty;
-    logic [`AXI_DATA_BITS-1:0] fifo_out [0:2];
-    logic                      WREADY; // Depend on FIFO is full or not
+    // Registered Address and Burst Signals
+    logic [`AXI_IDS_BITS-1:0]  ARID_r, AWID_r;
+    logic [`AXI_ADDR_BITS-1:0] ARADDR_r, AWADDR_r;
+    logic [`AXI_LEN_BITS-1:0]  ARLEN_r, AWLEN_r;
+    logic [`AXI_LEN_BITS-1:0]  R_burst_r, W_burst_r;
 
-    // ============================================================
-    // ID Registers
-    // ============================================================
-    logic [`AXI_IDS_BITS-1:0 ]  AWID, ARID;
-    logic [`AXI_ADDR_BITS-1:0]  ADDR;
+    // Watchdog Timer Control Signals
+    logic WDEN, WDLIVE;
+    logic [31:0] WTOCNT;
+    logic WDEN_valid, WDLIVE_valid, WTOCNT_valid;
 
-    // ============================================================
-    // Finite State Machine
-    // ============================================================
+    // Handshake and State Signals
+    logic handshake_AR, handshake_R, handshake_AW, handshake_W, handshake_B;
+    logic [1:0] current_state, next_state; 
 
-    // ---------------------------------------
-    // State Register
-    // ---------------------------------------
-    always_ff @( posedge clk or posedge rst ) begin
-        if (rst) CurrentState <= ACCEPT;
-        else     CurrentState <= NextState;
+    // AXI Read Channel Assignments
+    assign RID      = ARID_r;
+    assign ARREADY  = (current_state == IDLE) ? 1'b1 : 1'b0;
+    assign RVALID   = (current_state == RDATA_STATE) ? 1'b1 : 1'b0;
+    assign RDATA    = 32'd0;
+    assign RLAST    = (RVALID && (R_burst_r == ARLEN_r)) ? 1'b1 : 1'b0;
+    assign RRESP    = ((ARADDR_r >= ADDR_BEGIN) && (ARADDR_r <= ADDR_END)) ? 2'b00 : 2'b11;
+
+    // AXI Write Channel Assignments
+    assign AWREADY = (current_state == IDLE) ? 1'b1 : 1'b0;
+    assign WREADY  = (current_state == WDATA_STATE && ~wfull) ? 1'b1 : 1'b0;
+    assign BRESP   = ((ARADDR_r >= ADDR_BEGIN) && (ARADDR_r <= ADDR_END)) ? 2'b00 : 2'b11;
+
+    // FIFO Write Data Preparation
+    assign FIFO_in  = {WDEN_valid, WDEN, WDLIVE_valid, WDLIVE, WTOCNT_valid, WTOCNT};
+
+    // State Machine Sequential Logic
+    always_ff @(posedge clk , posedge rst) begin
+        if (rst)
+            current_state <= IDLE;
+        else 
+            current_state <= next_state;
     end
 
-    // ---------------------------------------
+    // Handshake Signal Definitions
+    assign handshake_AR = ARREADY & ARVALID;
+    assign handshake_AW = AWVALID & AWREADY;
+    assign handshake_R  = RVALID & RREADY;
+    assign handshake_W  = WVALID & WREADY;
+    assign handshake_B  = BVALID & BREADY;
+
     // Next State Logic
-    // ---------------------------------------
     always_comb begin
-        case(CurrentState)
-        ACCEPT: begin
-            if      (ARVALID_S) NextState = ReadData;
-            else if (AWVALID_S) NextState = WriteData;
-            else                NextState = ACCEPT;
-        end
-        ReadData: begin
-            if (RREADY_S)       NextState = ACCEPT;
-            else                NextState = CurrentState;
-        end
-        WriteData: begin
-            if (WVALID_S && WLAST_S)
-                                NextState = WriteResponse;
-            else                NextState = CurrentState;
-        end
-        WriteResponse: begin
-            if(BREADY_S)        NextState = ACCEPT;
-            else                NextState = CurrentState;
-        end
+        case (current_state)
+            IDLE        : next_state = (handshake_AW) ? WDATA_STATE : IDLE;
+            RDATA_STATE : next_state = (handshake_R & RLAST) ? IDLE : RDATA_STATE;
+            WDATA_STATE : next_state = (handshake_W & WLAST) ? B_STATE : WDATA_STATE;
+            B_STATE     : next_state = (handshake_B) ? IDLE : B_STATE;
+            default     : next_state = IDLE;
         endcase
     end
 
-    // ============================================================
-    // Channel Output Logic (combinational)
-    // ============================================================
-    always_comb begin
-        ARREADY_S = 1'b0;
-        AWREADY_S = 1'b0;
-        RID_S     = `AXI_IDS_BITS'd0;
-        RDATA_S   = `AXI_DATA_BITS'd0;
-        RRESP_S   = `AXI_RESP_DECERR;
-        RVALID_S  = 1'b0;
-        RLAST_S   = 1'b0;
-        WREADY_S  = 1'b0;
-        BID_S     = `AXI_IDS_BITS'd0;
-        BVALID_S  = 1'b0;
-        BRESP_S   = `AXI_RESP_DECERR;
-
-        case (CurrentState)
-            ACCEPT: begin
-                ARREADY_S = 1'b1;
-                AWREADY_S = 1'b1;
-            end
-            ReadData: begin
-                RID_S     = ARID;
-                RDATA_S   = `AXI_DATA_BITS'd0;
-                RRESP_S   = `AXI_RESP_DECERR;
-                RVALID_S  = 1'b1;
-                RLAST_S   = 1'b1;
-            end
-            WriteData: begin
-                WREADY_S  = WREADY;
-            end
-            WriteResponse: begin
-                BID_S     = AWID;
-                BVALID_S  = 1'b1;
-                BRESP_S   = `AXI_RESP_OKAY;
-            end
-        endcase
+    // Read Burst Counter
+    always_ff @(posedge clk , posedge rst) begin
+        if (rst)
+            R_burst_r <= 4'd0;
+        else if (handshake_R) begin
+            R_burst_r <= RLAST ? 4'd0 : R_burst_r + 4'd1;
+        end
     end
 
-    // ============================================================
-    // ID Storage
-    // ============================================================
-    always_ff @(posedge clk or posedge rst) begin
+    // Read Address Channel Registers
+    always_ff @(posedge clk , posedge rst) begin
         if (rst) begin
-            ARID <= `AXI_IDS_BITS'd0;
-            AWID <= `AXI_IDS_BITS'd0;
-            ADDR <= `AXI_ADDR_BITS'b0;
+            ARID_r   <= 8'd0;
+            ARADDR_r <= 32'd0;
+            ARLEN_r  <= 4'd0;
         end
-        else if (CurrentState == ACCEPT) begin
-            ARID <= ARVALID_S ? ARID_S : ARID;
-            AWID <= AWVALID_S ? AWID_S : AWID;
-            ADDR <= (ARVALID_S) ? ARADDR_S: (AWVALID_S ? AWADDR_S : ADDR);
-        end
-    end
-
-    // ============================================================
-    // WDT Interface
-    // ============================================================
-
-    // FIFO Write Push Control and Write Ready Signal
-    always_comb begin
-        wpush  = 3'b0;
-        WREADY = 1'b0;
-        if (CurrentState == WriteData && WVALID_S) begin
-            for (int i = 0; i < 3; i++) begin
-                if (ADDR == ADDR_LIST[i]) begin
-                    wpush[i] = 1'b1;
-                    WREADY = ~wfull[i];
-                end
-            end
+        else if (handshake_AR) begin
+            ARID_r   <= ARID;
+            ARADDR_r <= ARADDR;
+            ARLEN_r  <= ARLEN;
         end
     end
 
-    genvar i;
-    generate
-    for (i = 0; i < 3; i++) begin : fifo_gen
-        ASYN_FIFO #(.DATA_WIDTH(`AXI_DATA_BITS)) asyn_fifo (
-            .wclk(clk),
-            .wrst(rst),
-            .wpush(wpush[i]),
-            .FIFO_in(WDATA_S),
-            .wfull(wfull[i]),
-            .rclk(clk2),
-            .rrst(rst2),
-            .rpop(1'b1),
-            .FIFO_out(fifo_out[i]),
-            .rempty(fifo_empty[i])
-        );
+    // Write Address Channel Registers
+    always_ff @(posedge clk , posedge rst) begin
+        if (rst) begin
+            AWADDR_r <= 32'd0;
+            AWID_r   <= 8'd0;
+            AWLEN_r  <= 4'd0;
+        end
+        else if (handshake_AW) begin
+            AWADDR_r <= AWADDR;
+            AWID_r   <= AWID;
+            AWLEN_r  <= AWLEN;
+        end
     end
-    endgenerate
 
+    // Write Response Channel Control
+    always_ff @(posedge clk , posedge rst) begin
+        if (rst)
+            BVALID <= 1'd0;
+        else
+            BVALID <= (next_state == B_STATE) ? 1'd1 : 1'd0;
+    end
 
-WDT wdt (
-    // input
-    .clk(clk),
-    .rst(rst),
-    .clk2(clk2),
-    .rst2(rst2),
-    .WDEN          (fifo_out[0][0]),
-    .WDLIVE        (fifo_out[1][0]),
-    .WTOCNT        (fifo_out[2]),
-    .WDEN_RVALID   (~fifo_empty[0]),
-    .WDLIVE_RVALID (~fifo_empty[1]),
-    .WTOCNT_RVALID (~fifo_empty[2]),
-    // outut
-    .WTO_interrupt (WTO_interrupt)
-);
+    always_ff @(posedge clk , posedge rst) begin
+        if (rst)
+            BID <= 8'd0;
+        else if (next_state == B_STATE)
+            BID <= AWID;
+    end
+
+    // Watchdog Timer Enable Control
+    always_ff @(posedge clk , posedge rst) begin
+        if (rst) begin
+            WDEN <= 1'd0;
+            WDEN_valid <= 1'd0;
+        end
+        else if (~WDEN_valid && current_state == WDATA_STATE && AWADDR_r == 32'h0000_0100) begin
+            WDEN <= WDATA[0];
+            WDEN_valid <= 1'b1;
+        end
+        else begin
+            WDEN <= 1'b0;
+            WDEN_valid <= 1'b0;
+        end
+    end
+
+    // Watchdog Timer Live Control
+    always_ff @(posedge clk , posedge rst) begin
+        if (rst) begin
+            WDLIVE <= 1'd0;
+            WDLIVE_valid <= 1'd0;
+        end
+        else if (~WDLIVE_valid && current_state == WDATA_STATE && AWADDR_r == 32'h0000_0200) begin
+            WDLIVE <= WDATA[0];
+            WDLIVE_valid <= 1'b1; 
+        end
+        else begin
+            WDLIVE <= 1'b0;
+            WDLIVE_valid <= 1'b0;
+        end
+    end
+
+    // Watchdog Timer Timeout Counter
+    always_ff @(posedge clk , posedge rst) begin
+        if (rst) begin
+            WTOCNT <= 32'd0;
+            WTOCNT_valid <= 1'd0;
+        end
+        else if (~WTOCNT_valid && handshake_W && AWADDR_r == 32'h0000_0300) begin
+            WTOCNT <= WDATA;
+            WTOCNT_valid <= 1'b1;
+        end
+        else begin
+            WTOCNT <= 32'b0;
+            WTOCNT_valid <= 1'b0;
+        end
+    end
+
+    // FIFO Write Push Control
+    always_ff @(posedge clk , posedge rst) begin
+        if (rst) begin
+            wpush <= 0;
+        end
+        else if ((~WTOCNT_valid && handshake_W && AWADDR_r == 32'h0000_0300) || 
+                 (~WDLIVE_valid && handshake_W && AWADDR_r == 32'h0000_0200) || 
+                 (~WDEN_valid && handshake_W && AWADDR_r == 32'h0000_0100) && ~wfull) begin
+            wpush <= 1;
+        end
+        else begin
+            wpush <= 0;
+        end
+    end
+
+    // Asynchronous FIFO Instance
+    ASYN_FIFO asyn_fifo (
+        .wclk(clk),      
+        .wrst(rst),      
+        .wpush(wpush),     
+        .FIFO_in(FIFO_in),     
+        .wfull(wfull),     
+
+        .rclk(clk2),      
+        .rrst(rst2),      
+        .rpop(1'b1),      
+        .FIFO_out(FIFO_out),     
+        .rempty(rempty)    
+    );
+
+    // Watchdog Timer Instance
+    WDT wdt (
+        .clk(clk),
+        .clk2(clk2),
+        .rst(rst),
+        .rst2(rst2),
+        .WDEN(FIFO_out[35]),
+        .WDEN_valid(FIFO_out[36]),
+        .WDLIVE(FIFO_out[33]),
+        .WDLIVE_valid(FIFO_out[34]),
+        .WTOCNT(FIFO_out[31:0]),
+        .WTOCNT_valid(FIFO_out[32]),
+        .rempty(rempty),
+        .WTO_interrupt(WTO_interrupt)
+    );
 
 endmodule

@@ -1,110 +1,104 @@
 module WDT(
+    // Clock and Reset Signals
+    input  clk,
+    input  rst,
+    input  clk2,
+    input  rst2,
 
-    input               clk,
-    input               rst,
-    input               clk2,
-    input               rst2,
-
-    input               WDEN,
-    input               WDLIVE,
-    input  [31:0]       WTOCNT,
-    input               WDEN_RVALID,
-    input               WDLIVE_RVALID,
-    input               WTOCNT_RVALID,
-
-    output logic        WTO_interrupt
+    // Watchdog Timer Configuration Inputs
+    input  WDEN,          
+    input  WDEN_valid,     
+    input  WDLIVE,        
+    input  WDLIVE_valid,    
+    input  [31:0] WTOCNT,   
+    input  WTOCNT_valid,   
+    input  rempty,          
+    
+    // Timeout Output
+    output logic WTO_interrupt          
 );
 
-    // ============================================================
-    // State Definition
-    // ============================================================
-    typedef enum logic {
-        DISABLED = 1'b0,
-        ENABLED  = 1'b1
-    } state_t;
+    // Internal Registers
+    logic [31:0] watchdog_counter;      
+    logic wdt_enable_state;            
+    logic wdt_live_state;               
+    logic [31:0] wdt_timeout_threshold;         
 
-    state_t CurrentState, NextState;
-
-    // ============================================================
-    // Internal Register
-    // ============================================================
-    logic [31:0] counter;
-    logic [31:0] threshold;
-    logic        timeout, timeoutSync1, timeoutSync2;
-
-    // ============================================================
-    // Set up WTOCNT
-    // ============================================================
-    always_ff @(posedge clk2 or posedge rst2) begin
-        if (rst2)               threshold <= 32'd0;
-        else if (WTOCNT_RVALID) threshold <= WTOCNT;
-    end
-
-    // ============================================================
-    // Finite State Machine
-    // ============================================================
-
-    // ---------------------------------------
-    // State Register
-    // ---------------------------------------
-    always_ff @(posedge clk2 or posedge rst2) begin
-        if (rst2) CurrentState <= DISABLED;
-        else      CurrentState <= NextState;
-    end
-
-    // ---------------------------------------
-    // Next State Logic
-    // ---------------------------------------
-    always_comb begin
-        case (CurrentState)
-            DISABLED: begin
-                if (WDEN_RVALID && WDEN)  NextState = ENABLED;
-                else                      NextState = DISABLED;
-            end
-            ENABLED: begin
-                if (WDEN_RVALID && ~WDEN) NextState = DISABLED;
-                else                      NextState = ENABLED;
-            end
-        endcase
-    end
-
-    // ============================================================
-    // Main Counter Logic
-    // ============================================================
+    // Watchdog Enable Register
     always_ff @(posedge clk2 or posedge rst2) begin
         if (rst2) begin
-            counter <= 32'd0;
+            wdt_enable_state <= 1'b0;
         end
-        else begin
-            case (CurrentState)
-                ENABLED: counter <= (counter > threshold || (WDLIVE_RVALID && WDLIVE)) ? 32'd0 : counter + 32'd1;
-                default: counter <= 32'd0;
-            endcase
+        else if (WDEN_valid & ~rempty) begin
+            wdt_enable_state <= WDEN;
         end
     end
 
-    // ============================================================
-    // Timeout Detection
-    // ============================================================
+    // Watchdog Live Signal Register
     always_ff @(posedge clk2 or posedge rst2) begin
-        if (rst2) timeout <= 1'b0;
-        else      timeout <= (counter > threshold);
+        if (rst2) begin
+            wdt_live_state <= 1'b0;
+        end
+        else if (WDLIVE_valid & ~rempty) begin
+            wdt_live_state <= WDLIVE;
+        end
     end
 
-    // ============================================================
-    // Two-stage Synchronization for Timeout Signal
-    // ============================================================
-    always_ff @(posedge clk or posedge rst) begin
-        if (rst) begin
-            timeoutSync1 <= 1'b0;
-            timeoutSync2 <= 1'b0;
+    // Timeout Counter Value Register
+    always_ff @(posedge clk2 or posedge rst2) begin
+        if (rst2) begin
+            wdt_timeout_threshold <= 32'b0;
+        end
+        else if (WTOCNT_valid & ~rempty) begin
+            wdt_timeout_threshold <= WTOCNT;
+        end
+    end
+
+    // Main Counter Logic
+    always_ff @(posedge clk2 or posedge rst2) begin 
+        if (rst2) begin
+            watchdog_counter <= 32'd0;
         end
         else begin
-            timeoutSync1 <= timeout;
-            timeoutSync2 <= timeoutSync1;
+            if (wdt_enable_state) begin
+                // Reset counter if it exceeds timeout or live signal is active
+                if (watchdog_counter > wdt_timeout_threshold) 
+                    watchdog_counter <= !WDEN && WDEN_valid ? 32'd0 : watchdog_counter;
+                else 
+                    watchdog_counter <= wdt_live_state ? 32'd0 : watchdog_counter + 32'd1;
+                
+            end
         end
     end
 
-    assign WTO_interrupt = timeoutSync2;
+    // Timeout Detection Signals
+    logic wdt_timeout_detected;            
+    logic wdt_timeout_sync_stage1;         
+    logic wdt_timeout_sync_stage2;    
+    
+    // Timeout Detection
+    always_ff @(posedge clk2 or posedge rst2) begin 
+        if (rst2)
+            wdt_timeout_detected <= 1'd0;
+        else if (watchdog_counter > wdt_timeout_threshold)
+            wdt_timeout_detected <= 1'd1;
+        else 
+            wdt_timeout_detected <= 1'd0;
+    end
+
+    // Two-stage Synchronization for Timeout Signal
+    always_ff @(posedge clk2 or posedge rst2) begin 
+        if (rst2) begin
+            wdt_timeout_sync_stage1 <= 1'b0;
+            wdt_timeout_sync_stage2 <= 1'b0;
+        end
+        else begin
+            wdt_timeout_sync_stage1 <= wdt_timeout_detected;
+            wdt_timeout_sync_stage2 <= wdt_timeout_sync_stage1;
+        end
+    end
+
+    // Final Timeout Output
+    assign WTO_interrupt = wdt_timeout_sync_stage2;
 
 endmodule

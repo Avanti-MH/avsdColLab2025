@@ -28,7 +28,7 @@ module Branch_Predictor#(
     localparam int BTB_TAG_WIDTH   = PC_WIDTH - BTB_INDEX_WIDTH - LOW_IGNORED;
 
     localparam [1:0] sTaken  = 2'b10;
-    localparam [1:0] wTaken  = 2'b10;
+    localparam [1:0] wTaken  = 2'b00;
     localparam [1:0] wNtaken = 2'b01;
     localparam [1:0] sNtaken = 2'b11;
 
